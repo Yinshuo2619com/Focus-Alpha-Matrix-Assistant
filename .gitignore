@@ -1,0 +1,5 @@
+# 包含服务器路径和部署信息
+操作记录.md
+
+# 敏感配置
+backend/assistant/src/main/resources/application-prod.yml

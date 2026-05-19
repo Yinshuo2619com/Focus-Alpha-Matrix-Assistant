@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.educate.assistant.mapper.UserMapper">
+    
+    <select id="selectList" resultType="com.educate.assistant.entity.User">
+        SELECT * FROM user
+        <where>
+            <if test="ew != null and ew.sqlSegment != null and ew.sqlSegment != ''">
+                ${ew.sqlSegment}
+            </if>
+        </where>
+    </select>
+    
+    <select id="selectById" resultType="com.educate.assistant.entity.User">
+        SELECT * FROM user WHERE id = #{id}
+    </select>
+    
+<insert id="insert" parameterType="com.educate.assistant.entity.User">
+        INSERT INTO user (username, password, nickname, email, phone, status, created_at, updated_at)
+        VALUES (#{username}, #{password}, #{nickname}, #{email}, #{phone}, #{status}, NOW(), NOW())
+    </insert>
+    
+    <update id="updateById" parameterType="com.educate.assistant.entity.User">
+        UPDATE user
+        <set>
+            <if test="username != null">username = #{username},</if>
+            <if test="password != null">password = #{password},</if>
+            <if test="nickname != null">nickname = #{nickname},</if>
+            <if test="email != null">email = #{email},</if>
+            <if test="phone != null">phone = #{phone},</if>
+            <if test="status != null">status = #{status},</if>
+            updated_at = NOW()
+        </set>
+        WHERE id = #{id}
+    </update>
+    
+    <delete id="deleteById">
+        DELETE FROM user WHERE id = #{id}
+    </delete>
+    
+</mapper>

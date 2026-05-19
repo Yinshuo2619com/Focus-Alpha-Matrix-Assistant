@@ -1,0 +1,40 @@
+server:
+  port: 8080
+
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 20MB
+      enabled: true
+  datasource:
+    url: jdbc:mysql://localhost:3306/edu_assistant?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
+    username: root
+    password: 255277
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+mybatis-plus:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.educate.assistant.entity
+  global-config:
+    db-config:
+      id-type: auto
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    aggressive-lazy-loading: false
+    lazy-loading-enabled: false
+
+jwt:
+  secret: 9xlMRAsGVLRyHpwSXlKOGw3/MRleJ5Qyoj/mND1wf/c=
+  expiration: 302400000  # 3.5天（毫秒）
+
+avatar:
+  upload-dir: uploads/avatar
