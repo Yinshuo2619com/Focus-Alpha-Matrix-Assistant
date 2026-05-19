@@ -13,7 +13,7 @@ spring:
   datasource:
     url: jdbc:mysql://localhost:3306/edu_assistant?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
     username: root
-    password: 255277
+    password: your_db_password
     driver-class-name: com.mysql.cj.jdbc.Driver
   data:
     redis:
@@ -33,7 +33,7 @@ mybatis-plus:
     lazy-loading-enabled: false
 
 jwt:
-  secret: 9xlMRAsGVLRyHpwSXlKOGw3/MRleJ5Qyoj/mND1wf/c=
+  secret: your_jwt_secret_base64
   expiration: 302400000  # 3.5天（毫秒）
 
 avatar:
