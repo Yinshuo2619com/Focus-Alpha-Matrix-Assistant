@@ -15,7 +15,6 @@ export interface Schedule {
   userId: number
   semester: string
   academicYear: string
-  currentWeek?: number | null
   startDate?: string | null
   updatedAt: string
 }

@@ -13,4 +13,8 @@ public interface ScheduleService {
     void saveSchedule(Long userId, SaveScheduleRequest request);
 
     void deleteSchedule(Long userId, String semester);
+
+    String generateShareToken(Long userId);
+
+    Map<String, Object> getSharedSchedule(String token);
 }

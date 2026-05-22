@@ -54,5 +54,23 @@ export const useScheduleStore = defineStore('schedule', () => {
     throw new Error(res.message)
   }
 
-  return { scheduleData, loading, hasSchedule, fetchSchedule, loginToEdu, extractSchedule, saveSchedule, deleteSchedule, refreshSchedule }
+  const generateShareToken = async () => {
+    const res: any = await request.post('/schedule/share')
+    if (res.code === 200) return res.data as { token: string; url: string }
+    throw new Error(res.message)
+  }
+
+  const fetchSharedSchedule = async (token: string) => {
+    const res: any = await request.get(`/schedule/share/${token}`)
+    if (res.code === 200) return res.data as ScheduleData
+    throw new Error(res.message)
+  }
+
+  const importSharedSchedule = async (token: string) => {
+    const res: any = await request.post('/schedule/import-shared', { token })
+    if (res.code === 200) return res.data as string
+    throw new Error(res.message)
+  }
+
+  return { scheduleData, loading, hasSchedule, fetchSchedule, loginToEdu, extractSchedule, saveSchedule, deleteSchedule, refreshSchedule, generateShareToken, fetchSharedSchedule, importSharedSchedule }
 })

@@ -6,7 +6,6 @@ CREATE TABLE IF NOT EXISTS `schedule` (
     `school_id`     VARCHAR(32)  NOT NULL DEFAULT 'default',
     `semester`      VARCHAR(32)  NOT NULL COMMENT '如 2025-2026-2',
     `academic_year` VARCHAR(16)  NOT NULL COMMENT '如 2025-2026',
-    `current_week`  INT          DEFAULT NULL COMMENT '教务系统返回的当前周次',
     `start_date`    DATE         DEFAULT NULL COMMENT '学期起始日期',
     `created_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

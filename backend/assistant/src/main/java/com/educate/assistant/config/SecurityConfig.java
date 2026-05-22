@@ -42,6 +42,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // 放行所有OPTIONS预检请求
                 .requestMatchers("/avatar/**").permitAll() // 放行头像静态资源
                 .requestMatchers("/api/edu-proxy/**").permitAll() // 代理接口由控制器自行鉴权
+                .requestMatchers(HttpMethod.GET, "/api/schedule/share/**").permitAll() // 课表分享链接公开访问
                 .requestMatchers("/api/admin/**").hasAnyRole("ADMIN") // 管理员接口需要ADMIN角色
                 .requestMatchers(HttpMethod.POST, "/api/user/avatar").authenticated() // 头像上传明确配置
                 .anyRequest().authenticated() // 其他接口需要认证

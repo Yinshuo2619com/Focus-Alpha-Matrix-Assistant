@@ -90,8 +90,8 @@ public class ScheduleServiceImpl implements ScheduleService {
             startDateSql = java.sql.Date.valueOf(request.getStartDate());
         }
         jdbcTemplate.update(
-            "INSERT INTO schedule (user_id, school_id, semester, academic_year, current_week, start_date) VALUES (?, ?, ?, ?, ?, ?)",
-            userId, request.getSchoolId(), request.getSemester(), academicYear, request.getCurrentWeek(), startDateSql);
+            "INSERT INTO schedule (user_id, school_id, semester, academic_year, start_date) VALUES (?, ?, ?, ?, ?)",
+            userId, request.getSchoolId(), request.getSemester(), academicYear, startDateSql);
 
         Long scheduleId = jdbcTemplate.queryForObject(
             "SELECT LAST_INSERT_ID()", Long.class);
@@ -119,5 +119,61 @@ public class ScheduleServiceImpl implements ScheduleService {
     public void deleteSchedule(Long userId, String semester) {
         jdbcTemplate.update(
             "DELETE FROM schedule WHERE user_id = ? AND semester = ?", userId, semester);
+    }
+
+    @Override
+    public String generateShareToken(Long userId) {
+        // 查找用户最新的课表
+        List<Map<String, Object>> schedules = jdbcTemplate.queryForList(
+            "SELECT id, share_token FROM schedule WHERE user_id = ? ORDER BY updated_at DESC LIMIT 1",
+            userId);
+        if (schedules.isEmpty()) {
+            throw new RuntimeException("暂无课表数据，请先导入课表");
+        }
+
+        Map<String, Object> schedule = schedules.get(0);
+        Long scheduleId = ((Number) schedule.get("id")).longValue();
+        String existingToken = (String) schedule.get("share_token");
+
+        // 如果已有 token，直接返回
+        if (existingToken != null && !existingToken.isEmpty()) {
+            return existingToken;
+        }
+
+        // 生成 8 位 Base62 token
+        String token = generateBase62Token(8);
+        jdbcTemplate.update("UPDATE schedule SET share_token = ? WHERE id = ?", token, scheduleId);
+        return token;
+    }
+
+    @Override
+    public Map<String, Object> getSharedSchedule(String token) {
+        List<Map<String, Object>> schedules = jdbcTemplate.queryForList(
+            "SELECT * FROM schedule WHERE share_token = ?", token);
+        if (schedules.isEmpty()) {
+            return null;
+        }
+
+        Map<String, Object> schedule = toCamelCase(schedules.get(0));
+        Long scheduleId = ((Number) schedules.get(0).get("id")).longValue();
+
+        List<Map<String, Object>> courses = jdbcTemplate.queryForList(
+            "SELECT * FROM course_entry WHERE schedule_id = ? ORDER BY day_of_week, start_section",
+            scheduleId).stream().map(this::toCamelCase).toList();
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("schedule", schedule);
+        result.put("courses", courses);
+        return result;
+    }
+
+    private String generateBase62Token(int length) {
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        java.security.SecureRandom random = new java.security.SecureRandom();
+        StringBuilder sb = new StringBuilder(length);
+        for (int i = 0; i < length; i++) {
+            sb.append(chars.charAt(random.nextInt(chars.length())));
+        }
+        return sb.toString();
     }
 }

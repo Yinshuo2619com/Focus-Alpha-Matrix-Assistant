@@ -68,13 +68,16 @@
 
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { useUserStore } from '@/stores/user'
+import { useScheduleStore } from '@/stores/schedule'
 import EyeCharacter from '@/components/EyeCharacter.vue'
 
 const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
+const scheduleStore = useScheduleStore()
 
 const loginFormRef = ref<FormInstance>()
 const loading = ref(false)
@@ -102,7 +105,21 @@ const handleLogin = async () => {
     const res: any = await userStore.login(loginForm.username, loginForm.password)
     if (res.code === 200) {
       ElMessage.success('登录成功')
-      router.push('/home')
+      // 检查是否有待导入的分享课表
+      const pendingToken = sessionStorage.getItem('pendingImportToken')
+      if (pendingToken) {
+        sessionStorage.removeItem('pendingImportToken')
+        try {
+          await scheduleStore.importSharedSchedule(pendingToken)
+          ElMessage.success('课表导入成功')
+        } catch {
+          // 导入失败不阻塞跳转
+        }
+        router.push('/home')
+      } else {
+        const redirect = route.query.redirect as string
+        router.push(redirect || '/home')
+      }
     } else {
       ElMessage.error(res.message || '登录失败')
     }

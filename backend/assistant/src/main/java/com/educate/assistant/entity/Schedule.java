@@ -15,7 +15,6 @@ public class Schedule {
     private String schoolId;
     private String semester;
     private String academicYear;
-    private Integer currentWeek;
     private LocalDate startDate;
 
     @TableField(fill = FieldFill.INSERT)

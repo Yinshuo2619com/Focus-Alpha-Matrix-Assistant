@@ -49,7 +49,6 @@ import type { CourseEntry } from '@/types/schedule'
 const props = defineProps<{
   courses: CourseEntry[]
   semester?: string
-  currentWeek?: number | null
   startDate?: string | null
 }>()
 
@@ -132,17 +131,11 @@ const availableWeeks = computed(() => {
 const autoSelectWeek = () => {
   if (availableWeeks.value.length === 0) return
 
-  // 优先使用教务系统返回的当前周次
-  if (props.currentWeek && availableWeeks.value.includes(props.currentWeek)) {
-    currentWeek.value = props.currentWeek
-    return
-  }
-
   let semesterStart: Date | null = null
 
   // 优先使用数据库存储的起始日期
   if (props.startDate) {
-    semesterStart = new Date(props.startDate + 'T00:00:00')
+    semesterStart = new Date(props.startDate)
   } else if (props.semester) {
     // 回退：从学期字符串推算，如 "2025-2026-2"
     const parts = props.semester.split('-')

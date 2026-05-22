@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
 public class EduProxyService {
 
     private static final String SESSION_KEY_PREFIX = "edu:session:";
-    private static final long SESSION_TTL_HOURS = 2;
+    private static final long SESSION_TTL_HOURS = 1;
 
     private final RestTemplate restTemplate;
     private final JdbcTemplate jdbcTemplate;
@@ -391,6 +391,78 @@ public class EduProxyService {
         } catch (Exception e) {
             System.out.println("[EduProxy] Failed to fetch schedule data: " + e.getMessage());
             throw new RuntimeException("获取课表数据失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Get the student's personId from the course-table HTML page.
+     * The value is hardcoded in the page's JS: data['stdPersonId'] = 123136;
+     */
+    public int getStdPersonId(Long userId, String schoolId) {
+        String html = fetchSchedulePage(userId, schoolId);
+        // Match: data['stdPersonId'] = 123136 or data["stdPersonId"] = 123136
+        java.util.regex.Pattern p = java.util.regex.Pattern.compile("stdPersonId[\"']?\\s*]\\s*=\\s*(\\d+)");
+        java.util.regex.Matcher m = p.matcher(html);
+        if (m.find()) {
+            int id = Integer.parseInt(m.group(1));
+            System.out.println("[EduProxy] Got stdPersonId from HTML: " + id);
+            return id;
+        }
+        throw new RuntimeException("无法从课表页面提取 stdPersonId");
+    }
+
+    /**
+     * Fetch schedule datum from the educational system's datum API.
+     * POST /student/ws/schedule-table/datum with lessonIds and stdPersonId.
+     * Returns scheduleList with actual date and weekIndex per lesson.
+     */
+    public String fetchDatumApi(Long userId, String schoolId, List<Integer> lessonIds, int stdPersonId) {
+        String baseUrl = getSchoolBaseUrl(schoolId);
+        if (baseUrl == null) {
+            throw new RuntimeException("未找到学校配置: " + schoolId);
+        }
+
+        String datumUrl = baseUrl + "/student/ws/schedule-table/datum";
+        String schedulePath = getSchedulePath(schoolId);
+
+        Map<String, String> cookies = getSessionCookies(userId);
+        if (cookies.isEmpty()) {
+            throw new RuntimeException("未登录教务系统，请先登录");
+        }
+
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+            headers.set("Accept", "application/json, text/plain, */*");
+            headers.set("Content-Type", "application/json");
+            headers.set("X-Requested-With", "XMLHttpRequest");
+            headers.set("Referer", baseUrl + schedulePath);
+            headers.set("Cookie", cookies.entrySet().stream()
+                .map(e -> e.getKey() + "=" + e.getValue())
+                .collect(Collectors.joining("; ")));
+
+            // Build request body: {"lessonIds":[...],"studentId":null,"stdPersonId":123136,"weekIndex":null}
+            String requestBody = "{\"lessonIds\":" + new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(lessonIds)
+                + ",\"studentId\":null,\"stdPersonId\":" + stdPersonId + ",\"weekIndex\":null}";
+
+            HttpEntity<String> entity = new HttpEntity<>(requestBody, headers);
+            ResponseEntity<String> response = restTemplate.exchange(
+                datumUrl, HttpMethod.POST, entity, String.class);
+
+            Map<String, String> newCookies = extractCookies(response.getHeaders());
+            if (!newCookies.isEmpty()) {
+                storeCookies(userId, newCookies);
+            }
+
+            System.out.println("[EduProxy] Fetched datum API: " + datumUrl
+                + ", status: " + response.getStatusCode()
+                + ", body length: " + (response.getBody() != null ? response.getBody().length() : 0));
+
+            return response.getBody() != null ? response.getBody() : "";
+
+        } catch (Exception e) {
+            System.out.println("[EduProxy] Failed to fetch datum: " + e.getMessage());
+            throw new RuntimeException("获取课表datum数据失败: " + e.getMessage());
         }
     }
 

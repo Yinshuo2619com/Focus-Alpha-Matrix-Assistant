@@ -126,6 +126,12 @@ const handleExtract = async () => {
     } else {
       ElMessage.warning('未识别到课程数据，请确认已打开课表页面')
     }
+
+    // 自动提取起始日期
+    const startDateEl = doc.querySelector('#startDate')
+    if (startDateEl?.textContent?.trim()) {
+      startDate.value = startDateEl.textContent.trim()
+    }
   } catch (err: any) {
     ElMessage.error(err.message || '提取失败')
   } finally {

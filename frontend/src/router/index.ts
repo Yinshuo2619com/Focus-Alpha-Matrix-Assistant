@@ -38,6 +38,12 @@ const router = createRouter({
       path: '/schedule-import',
       name: 'ScheduleImport',
       component: () => import('@/views/ScheduleImport.vue')
+    },
+    {
+      path: '/schedule/share/:token',
+      name: 'ShareSchedule',
+      component: () => import('@/views/ShareSchedule.vue'),
+      meta: { public: true }
     }
   ]
 })
@@ -48,10 +54,10 @@ const publicPages = ['/login', '/register', '/home']
 // 路由守卫：默认需要登录，公开页面除外
 router.beforeEach((to, _from, next) => {
   const token = localStorage.getItem('token')
-  const isPublic = publicPages.includes(to.path)
+  const isPublic = publicPages.includes(to.path) || to.meta.public === true
 
   if (!token && !isPublic) {
-    next('/login')
+    next({ path: '/login', query: { redirect: to.fullPath } })
     return
   }
 

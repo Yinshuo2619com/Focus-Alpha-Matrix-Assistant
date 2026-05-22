@@ -13,16 +13,16 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 
-// 人物图片导入
-import imgNormal from '@/assets/characters/人物正常.png'
-import imgTop from '@/assets/characters/人物看上方.png'
-import imgBottom from '@/assets/characters/人物看下方.png'
-import imgLeft from '@/assets/characters/人物看左方.png'
-import imgRight from '@/assets/characters/人物看右方.png'
-import imgTopLeft from '@/assets/characters/人物看左上方.png'
-import imgTopRight from '@/assets/characters/人物看右上方.png'
-import imgBottomLeft from '@/assets/characters/人物看左下方.png'
-import imgBottomRight from '@/assets/characters/人物看右下方.png'
+// 人物图片导入（WebP 格式，400px）
+import imgNormal from '@/assets/characters/人物正常.webp'
+import imgTop from '@/assets/characters/人物看上方.webp'
+import imgBottom from '@/assets/characters/人物看下方.webp'
+import imgLeft from '@/assets/characters/人物看左方.webp'
+import imgRight from '@/assets/characters/人物看右方.webp'
+import imgTopLeft from '@/assets/characters/人物看左上方.webp'
+import imgTopRight from '@/assets/characters/人物看右上方.webp'
+import imgBottomLeft from '@/assets/characters/人物看左下方.webp'
+import imgBottomRight from '@/assets/characters/人物看右下方.webp'
 
 defineProps<{
   message?: string

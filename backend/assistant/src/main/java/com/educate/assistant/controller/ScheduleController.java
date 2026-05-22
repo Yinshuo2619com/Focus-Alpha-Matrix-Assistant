@@ -17,10 +17,15 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -93,6 +98,81 @@ public class ScheduleController {
         return Result.success(null);
     }
 
+    @PostMapping("/share")
+    public Result<Map<String, String>> generateShareToken() {
+        Long userId = getCurrentUserId();
+        try {
+            String token = scheduleService.generateShareToken(userId);
+            Map<String, String> data = new HashMap<>();
+            data.put("token", token);
+            data.put("url", "/schedule/share/" + token);
+            return Result.success(data);
+        } catch (RuntimeException e) {
+            return Result.error(400, e.getMessage());
+        }
+    }
+
+    @GetMapping("/share/{token}")
+    public Result<Map<String, Object>> getSharedSchedule(@PathVariable String token) {
+        Map<String, Object> data = scheduleService.getSharedSchedule(token);
+        if (data == null) {
+            return Result.error(404, "分享链接不存在或已失效");
+        }
+        return Result.success(data);
+    }
+
+    @SuppressWarnings("unchecked")
+    @PostMapping("/import-shared")
+    public Result<String> importSharedSchedule(@RequestBody Map<String, String> body) {
+        Long userId = getCurrentUserId();
+        String token = body.get("token");
+        if (token == null || token.isEmpty()) {
+            return Result.error(400, "缺少分享令牌");
+        }
+
+        Map<String, Object> data = scheduleService.getSharedSchedule(token);
+        if (data == null) {
+            return Result.error(404, "分享链接不存在或已失效");
+        }
+
+        Map<String, Object> schedule = (Map<String, Object>) data.get("schedule");
+        List<Map<String, Object>> courseMaps = (List<Map<String, Object>>) data.get("courses");
+
+        List<CourseEntryDTO> courses = new ArrayList<>();
+        for (Map<String, Object> cm : courseMaps) {
+            CourseEntryDTO dto = new CourseEntryDTO();
+            dto.setCourseName((String) cm.get("courseName"));
+            dto.setTeacher((String) cm.get("teacher"));
+            dto.setLocation((String) cm.get("location"));
+            dto.setDayOfWeek(cm.get("dayOfWeek") instanceof Number ? ((Number) cm.get("dayOfWeek")).intValue() : null);
+            dto.setStartSection(cm.get("startSection") instanceof Number ? ((Number) cm.get("startSection")).intValue() : null);
+            dto.setEndSection(cm.get("endSection") instanceof Number ? ((Number) cm.get("endSection")).intValue() : null);
+            dto.setWeeks((String) cm.get("weeks"));
+            dto.setColor((String) cm.get("color"));
+            courses.add(dto);
+        }
+
+        SaveScheduleRequest request = new SaveScheduleRequest();
+        request.setSemester((String) schedule.get("semester"));
+        Object startDateObj = schedule.get("startDate");
+        if (startDateObj instanceof java.sql.Date) {
+            request.setStartDate(((java.sql.Date) startDateObj).toString());
+        } else if (startDateObj instanceof String) {
+            request.setStartDate((String) startDateObj);
+        }
+        request.setCourses(courses);
+        scheduleService.saveSchedule(userId, request);
+
+        return Result.success("导入成功");
+    }
+
+    private static final Pattern ENTRY_PATTERN = Pattern.compile(
+        "(?:#(\\d+)\\s*)?(\\S+?)周\\s*(周[一二三四五六日])\\s*第([一二三四五六七八九十]+)节~第([一二三四五六七八九十]+)节\\s*(.*)");
+
+    private static final Map<String, Integer> DAY_MAP = Map.of(
+        "周一", 1, "周二", 2, "周三", 3, "周四", 4, "周五", 5, "周六", 6, "周日", 7
+    );
+
     @PostMapping("/refresh")
     public Result<String> refreshSchedule() {
         Long userId = getCurrentUserId();
@@ -113,75 +193,124 @@ public class ScheduleController {
 
         String semester = (String) schedule.get("semester");
 
-        // 从教务系统 JSON API 获取课表数据
+        try {
+        // Step 1: 从 get-data API 获取 lessons 列表
         String jsonData = eduProxyService.fetchScheduleDataApi(userId, "default", 307);
-        List<CourseEntryDTO> courses = parseScheduleJson(jsonData);
+        ObjectMapper mapper = new ObjectMapper();
+        Map<String, Object> getDataRoot = mapper.readValue(jsonData, new TypeReference<Map<String, Object>>() {});
 
-        // 如果解析到 0 门课程，不保存（避免清空已有数据）
-        if (courses.isEmpty()) {
-            return Result.error(400, "未解析到课程数据");
+        List<Integer> lessonIds = new ArrayList<>();
+        Object lessonsObj = getDataRoot.get("lessons");
+        if (lessonsObj instanceof List) {
+            for (Object lesson : (List<?>) lessonsObj) {
+                if (lesson instanceof Map) {
+                    Object id = ((Map<?, ?>) lesson).get("id");
+                    if (id instanceof Number) lessonIds.add(((Number) id).intValue());
+                }
+            }
+        }
+        if (lessonIds.isEmpty()) {
+            return Result.error(400, "未获取到课程 ID 列表");
         }
 
-        // 提取教务系统返回的当前周次和起始日期
-        Integer currentWeek = parseCurrentWeek(jsonData);
-        String startDate = parseStartDate(jsonData);
+        // Step 2: 调用 datum API，收集学生实际的 (lessonId, weekday) 组合 + startDate
+        int stdPersonId = eduProxyService.getStdPersonId(userId, "default");
+        String datumJson = eduProxyService.fetchDatumApi(userId, "default", lessonIds, stdPersonId);
+        Map<String, Object> datumRoot = mapper.readValue(datumJson, new TypeReference<Map<String, Object>>() {});
 
-        // 保存到数据库
-        SaveScheduleRequest request = new SaveScheduleRequest();
-        request.setSemester(semester);
-        request.setCourses(courses);
-        request.setCurrentWeek(currentWeek);
-        request.setStartDate(startDate);
-        scheduleService.saveSchedule(userId, request);
+        // 收集学生实际的 (lessonId, weekday) 组合 + 教师/教室信息
+        Set<String> studentSlots = new HashSet<>();
+        // key: "lessonId-weekday" → value: [teacher, location]
+        Map<String, String[]> slotInfo = new HashMap<>();
+        String startDate = null;
+        Object resultObj = datumRoot.get("result");
+        if (resultObj instanceof Map) {
+            Object scheduleListObj = ((Map<?, ?>) resultObj).get("scheduleList");
+            if (scheduleListObj instanceof List) {
+                for (Object item : (List<?>) scheduleListObj) {
+                    if (item instanceof Map) {
+                        Map<?, ?> e = (Map<?, ?>) item;
+                        Object lidObj = e.get("lessonId");
+                        Object wdObj = e.get("weekday");
+                        if (lidObj instanceof Number && wdObj instanceof Number) {
+                            int lid = ((Number) lidObj).intValue();
+                            int wd = ((Number) wdObj).intValue();
+                            String key = lid + "-" + wd;
+                            studentSlots.add(key);
 
-        return Result.success("刷新成功，共 " + courses.size() + " 门课程");
-    }
+                            // 提取教师和教室（只需存一次）
+                            if (!slotInfo.containsKey(key)) {
+                                String teacher = e.get("personName") != null ? e.get("personName").toString() : "";
+                                String location = "";
+                                Object roomObj = e.get("room");
+                                if (roomObj instanceof Map) {
+                                    Map<?, ?> room = (Map<?, ?>) roomObj;
+                                    String roomName = room.get("nameZh") != null ? room.get("nameZh").toString() : "";
+                                    String campus = "";
+                                    Object building = room.get("building");
+                                    if (building instanceof Map) {
+                                        Object campusObj = ((Map<?, ?>) building).get("campus");
+                                        if (campusObj instanceof Map) {
+                                            campus = ((Map<?, ?>) campusObj).get("nameZh") != null
+                                                ? ((Map<?, ?>) campusObj).get("nameZh").toString() : "";
+                                        }
+                                    }
+                                    location = (campus + " " + roomName).trim();
+                                }
+                                slotInfo.put(key, new String[]{teacher, location});
+                            }
+                        }
+                        // 提取 startDate
+                        Object weekIdx = e.get("weekIndex");
+                        Object dateObj = e.get("date");
+                        if (weekIdx instanceof Number && ((Number) weekIdx).intValue() == 1
+                            && dateObj instanceof String) {
+                            String d = (String) dateObj;
+                            if (!d.isEmpty() && (startDate == null || d.compareTo(startDate) < 0)) {
+                                startDate = d;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        System.out.println("[Schedule] studentSlots size: " + studentSlots.size() + ", startDate: " + startDate);
 
-    private static final Pattern ENTRY_PATTERN = Pattern.compile(
-        "(?:#\\d+\\s*)?(\\S+?)周\\s*(周[一二三四五六日])\\s*第([一二三四五六七八九十]+)节~第([一二三四五六七八九十]+)节\\s*(.*)");
-
-    private static final Map<String, Integer> DAY_MAP = Map.of(
-        "周一", 1, "周二", 2, "周三", 3, "周四", 4, "周五", 5, "周六", 6, "周日", 7
-    );
-
-    @SuppressWarnings("unchecked")
-    private List<CourseEntryDTO> parseScheduleJson(String jsonData) {
+        // Step 3: 从文本提取节次，教师/教室从 datum API 取
         List<CourseEntryDTO> courses = new ArrayList<>();
-        if (jsonData == null || jsonData.isEmpty()) return courses;
+        if (lessonsObj instanceof List) {
+            for (Object lesson : (List<?>) lessonsObj) {
+                if (!(lesson instanceof Map)) continue;
+                Map<?, ?> lm = (Map<?, ?>) lesson;
+                Object idObj = lm.get("id");
+                if (!(idObj instanceof Number)) continue;
+                int lessonId = ((Number) idObj).intValue();
 
-        try {
-            ObjectMapper mapper = new ObjectMapper();
-            Map<String, Object> root = mapper.readValue(jsonData, new TypeReference<Map<String, Object>>() {});
-
-            Object lessonsObj = root.get("lessons");
-            if (!(lessonsObj instanceof List)) return courses;
-            List<Map<String, Object>> lessons = (List<Map<String, Object>>) lessonsObj;
-
-            for (Map<String, Object> lesson : lessons) {
-                // 课程名在 lesson.course.nameZh，lesson.nameZh 是班级名
+                // 课程名
                 String courseName = null;
-                Object courseObj = lesson.get("course");
+                Object courseObj = lm.get("course");
                 if (courseObj instanceof Map) {
-                    courseName = getStringValue((Map<String, Object>) courseObj, "nameZh");
+                    Object n = ((Map<?, ?>) courseObj).get("nameZh");
+                    if (n != null) courseName = n.toString();
                 }
                 if (courseName == null) {
-                    courseName = getStringValue(lesson, "nameZh");
+                    Object n = lm.get("nameZh");
+                    if (n != null) courseName = n.toString();
                 }
                 if (courseName == null) continue;
 
-                Object scheduleTextObj = lesson.get("scheduleText");
+                // 解析 dateTimeText（只需星期和节次，不需要地点/教师）
+                Object scheduleTextObj = lm.get("scheduleText");
                 if (!(scheduleTextObj instanceof Map)) continue;
-                Map<String, Object> scheduleText = (Map<String, Object>) scheduleTextObj;
-
-                // dateTimePlacePersonText 包含完整信息：周次、星期、节次、地点、教师
-                // 可能包含多条记录，用 ; 分隔
-                String fullText = getNestedText(scheduleText, "dateTimePlacePersonText");
+                // 用 dateTimeText 而非 dateTimePlacePersonText，更简洁
+                Object dtObj = ((Map<?, ?>) scheduleTextObj).get("dateTimeText");
+                String fullText = null;
+                if (dtObj instanceof Map) {
+                    Object t = ((Map<?, ?>) dtObj).get("textZh");
+                    if (t != null) fullText = t.toString();
+                }
                 if (fullText == null || fullText.isBlank()) continue;
 
-                String lastLocation = null;
-                String lastTeacher = null;
-
-                // 按 ; 拆分多条课程安排
                 String[] entries = fullText.split(";\\s*");
                 for (String entry : entries) {
                     entry = entry.trim();
@@ -190,98 +319,88 @@ public class ScheduleController {
                     Matcher m = ENTRY_PATTERN.matcher(entry);
                     if (!m.find()) continue;
 
-                    String weekStr = m.group(1);
-                    Integer dayOfWeek = DAY_MAP.get(m.group(2));
-                    Integer startSection = chineseToInt(m.group(3));
-                    Integer endSection = chineseToInt(m.group(4));
-                    String remainder = m.group(5).trim();
-                    if (dayOfWeek == null || startSection == null || endSection == null) continue;
+                    Integer dayOfWeek = DAY_MAP.get(m.group(3));
+                    if (dayOfWeek == null) continue;
 
-                    String weeks = parseWeekString(weekStr);
+                    // 用 datum API 过滤
+                    String slotKey = lessonId + "-" + dayOfWeek;
+                    if (!studentSlots.contains(slotKey)) continue;
 
-                    // remainder = "龙山校区 A507 邹璐" 或 "邹璐"（无地点）
-                    // 教师名在最后，地点在中间
-                    String location = null;
-                    String teacher = null;
-                    if (!remainder.isEmpty()) {
-                        String[] parts = remainder.split("\\s+");
-                        if (parts.length >= 2) {
-                            // 有地点和教师：最后一个是教师，前面是地点
-                            teacher = parts[parts.length - 1];
-                            location = String.join(" ", java.util.Arrays.copyOfRange(parts, 0, parts.length - 1));
-                        } else if (parts.length == 1) {
-                            // 只有一个词，可能是教师（地点沿用上一条）
-                            teacher = parts[0];
-                        }
-                    }
+                    Integer startSection = chineseToInt(m.group(4));
+                    Integer endSection = chineseToInt(m.group(5));
+                    if (startSection == null || endSection == null) continue;
 
-                    // 沿用上一条的地点/教师
-                    if (location == null || location.isEmpty()) location = lastLocation;
-                    if (teacher == null || teacher.isEmpty()) teacher = lastTeacher;
-                    if (location != null) lastLocation = location;
-                    if (teacher != null) lastTeacher = teacher;
+                    String weeks = parseWeekString(m.group(2));
+
+                    // 教师和教室从 datum API 取
+                    String[] info = slotInfo.getOrDefault(slotKey, new String[]{"", ""});
 
                     CourseEntryDTO dto = new CourseEntryDTO();
-                    dto.setCourseName(truncate(courseName, 100));
-                    dto.setTeacher(truncate(teacher, 50));
-                    dto.setLocation(truncate(location, 50));
+                    dto.setCourseName(courseName);
+                    dto.setTeacher(info[0]);
+                    dto.setLocation(info[1]);
                     dto.setDayOfWeek(dayOfWeek);
                     dto.setStartSection(startSection);
                     dto.setEndSection(endSection);
-                    dto.setWeeks(truncate(weeks, 200));
+                    dto.setWeeks(weeks);
                     courses.add(dto);
                 }
             }
-
-        } catch (Exception e) {
-            System.out.println("[ScheduleController] Failed to parse schedule JSON: " + e.getMessage());
         }
 
-        return courses;
-    }
-
-    private Integer parseCurrentWeek(String jsonData) {
-        try {
-            ObjectMapper mapper = new ObjectMapper();
-            Map<String, Object> root = mapper.readValue(jsonData, new TypeReference<Map<String, Object>>() {});
-            Object val = root.get("currentWeek");
-            if (val instanceof Number) return ((Number) val).intValue();
-        } catch (Exception ignored) {}
-        return null;
-    }
-
-    private String parseStartDate(String jsonData) {
-        try {
-            ObjectMapper mapper = new ObjectMapper();
-            Map<String, Object> root = mapper.readValue(jsonData, new TypeReference<Map<String, Object>>() {});
-            // 教务系统 JSON 可能返回 startDate、firstDay 或 schoolCalendar.startDate
-            Object val = root.get("startDate");
-            if (val instanceof String) return (String) val;
-            // 尝试从 schoolCalendar 中获取
-            Object calendar = root.get("schoolCalendar");
-            if (calendar instanceof Map) {
-                Object firstDay = ((Map<?, ?>) calendar).get("startDate");
-                if (firstDay instanceof String) return (String) firstDay;
+        // 去重合并：相同 (courseName, teacher, dayOfWeek, startSection, endSection) 的条目合并 weeks
+        Map<String, CourseEntryDTO> merged = new LinkedHashMap<>();
+        for (CourseEntryDTO dto : courses) {
+            String key = dto.getCourseName() + "|" + dto.getTeacher() + "|"
+                + dto.getDayOfWeek() + "|" + dto.getStartSection() + "|" + dto.getEndSection();
+            CourseEntryDTO existing = merged.get(key);
+            if (existing == null) {
+                merged.put(key, dto);
+            } else {
+                Set<Integer> allWeeks = new TreeSet<>();
+                for (String w : existing.getWeeks().split(",")) {
+                    w = w.trim();
+                    if (!w.isEmpty()) allWeeks.add(Integer.parseInt(w));
+                }
+                for (String w : dto.getWeeks().split(",")) {
+                    w = w.trim();
+                    if (!w.isEmpty()) allWeeks.add(Integer.parseInt(w));
+                }
+                existing.setWeeks(allWeeks.stream().map(String::valueOf).collect(Collectors.joining(",")));
             }
-        } catch (Exception ignored) {}
-        return null;
+        }
+        courses = new ArrayList<>(merged.values());
+
+        if (courses.isEmpty()) {
+            return Result.error(400, "未解析到课程数据");
+        }
+
+        System.out.println("[Schedule] Refreshed: " + courses.size() + " courses, startDate: " + startDate);
+
+        // 保存到数据库
+        SaveScheduleRequest request = new SaveScheduleRequest();
+        request.setSemester(semester);
+        request.setCourses(courses);
+        request.setStartDate(startDate);
+        scheduleService.saveSchedule(userId, request);
+
+        return Result.success("刷新成功，共 " + courses.size() + " 门课程");
+
+        } catch (Exception e) {
+            System.out.println("[Schedule] Refresh failed: " + e.getMessage());
+            e.printStackTrace();
+            return Result.error(500, "刷新失败: " + e.getMessage());
+        }
     }
 
-    private String getNestedText(Map<String, Object> parent, String key) {
-        Object obj = parent.get(key);
-        if (!(obj instanceof Map)) return null;
-        Object textZh = ((Map<?, ?>) obj).get("textZh");
-        return textZh != null ? textZh.toString() : null;
-    }
-
-    private String getStringValue(Map<String, Object> map, String key) {
-        Object val = map.get(key);
-        return val != null ? val.toString() : null;
+    private Long getCurrentUserId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String username = auth.getName();
+        return jdbcTemplate.queryForObject(
+            "SELECT id FROM user WHERE username = ?", Long.class, username);
     }
 
     private String parseWeekString(String weekStr) {
-        // 支持格式: "7", "11~12", "1-16", "1,3,5", "1~4,7~17", "1~5,10"
-        // 先用 ~ 或 - 作为范围分隔符，再用 , 拆分
         String normalized = weekStr.replace("~", "-");
         String[] parts = normalized.split(",");
         List<String> weeks = new ArrayList<>();
@@ -309,39 +428,31 @@ public class ScheduleController {
         return String.join(",", weeks);
     }
 
-    private String truncate(String s, int maxLen) {
-        if (s == null) return null;
-        return s.length() > maxLen ? s.substring(0, maxLen) : s;
-    }
-
-    private Integer chineseToInt(String chinese) {
-        if (chinese == null || chinese.isEmpty()) return null;
-        int result = 0;
-        for (int i = 0; i < chinese.length(); i++) {
-            char c = chinese.charAt(i);
-            switch (c) {
-                case '一': result += 1; break;
-                case '二': result += 2; break;
-                case '三': result += 3; break;
-                case '四': result += 4; break;
-                case '五': result += 5; break;
-                case '六': result += 6; break;
-                case '七': result += 7; break;
-                case '八': result += 8; break;
-                case '九': result += 9; break;
-                case '十':
-                    result = (result == 0 ? 1 : result) * 10;
-                    break;
-                default: return null;
-            }
+    private Integer chineseToInt(String s) {
+        if (s == null || s.isEmpty()) return null;
+        Map<Character, Integer> map = Map.of(
+            '一', 1, '二', 2, '三', 3, '四', 4, '五', 5,
+            '六', 6, '七', 7, '八', 8, '九', 9
+        );
+        if (s.length() == 1) return map.getOrDefault(s.charAt(0), null);
+        if ("十".equals(s)) return 10;
+        if (s.startsWith("十")) {
+            Integer r = map.getOrDefault(s.charAt(1), null);
+            return r != null ? 10 + r : null;
         }
-        return result;
+        if (s.endsWith("十")) {
+            Integer l = map.getOrDefault(s.charAt(0), null);
+            return l != null ? l * 10 : null;
+        }
+        if (s.length() == 2 && s.charAt(1) == '十') {
+            Integer l = map.getOrDefault(s.charAt(0), null);
+            return l != null ? l * 10 : null;
+        }
+        if (s.length() == 2 && s.charAt(0) == '十') {
+            Integer r = map.getOrDefault(s.charAt(1), null);
+            return r != null ? 10 + r : null;
+        }
+        return null;
     }
 
-    private Long getCurrentUserId() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        String username = auth.getName();
-        return jdbcTemplate.queryForObject(
-            "SELECT id FROM user WHERE username = ?", Long.class, username);
-    }
 }

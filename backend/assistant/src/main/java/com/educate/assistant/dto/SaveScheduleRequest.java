@@ -8,7 +8,6 @@ public class SaveScheduleRequest {
     private String semester;
     private String academicYear;
     private String schoolId = "default";
-    private Integer currentWeek;
     private String startDate;
     private List<CourseEntryDTO> courses;
 }

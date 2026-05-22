@@ -31,7 +31,13 @@ request.interceptors.response.use(
             const {status, data} = error.response;
             if (status === 401 || status === 403) {
                 localStorage.removeItem('token');
-                router.push('/login');
+                // 公开页面（如首页）遇到 401 不跳转，只在需要登录的页面才跳转
+                const currentRoute = router.currentRoute.value
+                const isPublic = currentRoute.meta.public === true
+                if (!isPublic) {
+                    const currentPath = currentRoute.fullPath
+                    router.push({ path: '/login', query: { redirect: currentPath } });
+                }
             } else {
                 ElMessage.error(data.message || '请求失败');
             }
