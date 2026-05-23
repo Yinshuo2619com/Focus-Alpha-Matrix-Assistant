@@ -79,10 +79,15 @@ public class ScheduleServiceImpl implements ScheduleService {
             academicYear = lastDash > 0 ? sem.substring(0, lastDash) : sem;
         }
 
-        // Delete existing schedule for this semester
+        // Delete existing schedule and course entries for this semester
+        System.out.println("[Schedule] DELETE schedule: userId=" + userId + ", semester='" + request.getSemester() + "'");
         jdbcTemplate.update(
+            "DELETE ce FROM course_entry ce JOIN schedule s ON ce.schedule_id = s.id WHERE s.user_id = ? AND s.semester = ?",
+            userId, request.getSemester());
+        int deleted = jdbcTemplate.update(
             "DELETE FROM schedule WHERE user_id = ? AND semester = ?",
             userId, request.getSemester());
+        System.out.println("[Schedule] Deleted " + deleted + " schedule(s)");
 
         // Insert new schedule
         java.sql.Date startDateSql = null;
@@ -105,10 +110,11 @@ public class ScheduleServiceImpl implements ScheduleService {
         int colorIdx = 0;
         for (CourseEntryDTO c : request.getCourses()) {
             String color = COLORS[colorIdx % COLORS.length];
+            String weeks = c.getWeeks() != null ? c.getWeeks() : "";
             batchArgs.add(new Object[]{
                 scheduleId, c.getCourseName(), c.getTeacher(), c.getLocation(),
                 c.getDayOfWeek(), c.getStartSection(), c.getEndSection(),
-                c.getWeeks(), color
+                weeks, color
             });
             colorIdx++;
         }

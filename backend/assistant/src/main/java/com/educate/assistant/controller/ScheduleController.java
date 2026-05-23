@@ -199,6 +199,16 @@ public class ScheduleController {
         ObjectMapper mapper = new ObjectMapper();
         Map<String, Object> getDataRoot = mapper.readValue(jsonData, new TypeReference<Map<String, Object>>() {});
 
+        // 提取免听课程 ID
+        Set<Integer> notAttendIds = new HashSet<>();
+        Object notAttendObj = getDataRoot.get("notAttendLessonIds");
+        if (notAttendObj instanceof List) {
+            for (Object id : (List<?>) notAttendObj) {
+                if (id instanceof Number) notAttendIds.add(((Number) id).intValue());
+            }
+        }
+        System.out.println("[Schedule] notAttendLessonIds: " + notAttendIds);
+
         List<Integer> lessonIds = new ArrayList<>();
         Object lessonsObj = getDataRoot.get("lessons");
         if (lessonsObj instanceof List) {
@@ -285,6 +295,9 @@ public class ScheduleController {
                 Object idObj = lm.get("id");
                 if (!(idObj instanceof Number)) continue;
                 int lessonId = ((Number) idObj).intValue();
+
+                // 跳过免听课程
+                if (notAttendIds.contains(lessonId)) continue;
 
                 // 课程名
                 String courseName = null;
@@ -406,6 +419,15 @@ public class ScheduleController {
         List<String> weeks = new ArrayList<>();
         for (String part : parts) {
             part = part.trim();
+            String parity = null;
+            // 统一处理全角 （单）（双） 和半角 (单)(双) 括号
+            if (part.matches(".*[（(]单[）)]")) {
+                parity = "odd";
+                part = part.replaceAll("[（(]单[）)]", "");
+            } else if (part.matches(".*[（(]双[）)]")) {
+                parity = "even";
+                part = part.replaceAll("[（(]双[）)]", "");
+            }
             if (part.contains("-")) {
                 String[] range = part.split("-");
                 if (range.length == 2) {
@@ -413,7 +435,11 @@ public class ScheduleController {
                         int start = Integer.parseInt(range[0].trim());
                         int end = Integer.parseInt(range[1].trim());
                         for (int i = start; i <= end; i++) {
-                            weeks.add(String.valueOf(i));
+                            if (parity == null
+                                || ("odd".equals(parity) && i % 2 == 1)
+                                || ("even".equals(parity) && i % 2 == 0)) {
+                                weeks.add(String.valueOf(i));
+                            }
                         }
                     } catch (NumberFormatException ignored) {
                         weeks.add(part);

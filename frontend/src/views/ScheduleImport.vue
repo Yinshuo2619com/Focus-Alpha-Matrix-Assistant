@@ -148,10 +148,12 @@ async function extractFromDOM(doc: Document): Promise<CourseEntry[]> {
     const cards = col.querySelectorAll('div.card-view')
     for (let ci = 0; ci < cards.length; ci++) {
       const card = cards[ci]
+      // 跳过免听课程
+      if (card.textContent?.includes('免听')) continue
       const info = card.querySelector('p.card-content-info')
       if (!info) continue
 
-      const entry: any = { dayOfWeek }
+      const entry: any = { dayOfWeek, weeks: '' }
 
       // 按 <br> 分割获取各行，清理 &nbsp;
       const lines = info.innerHTML.split(/<br\s*\/?>/i).map(l => {
@@ -206,7 +208,7 @@ async function extractFromDOM(doc: Document): Promise<CourseEntry[]> {
 
       card.dispatchEvent(new MouseEvent('mouseout', { bubbles: true }))
 
-      if (entry.courseName && entry.startSection) courses.push(entry)
+      if (entry.courseName && entry.startSection && entry.weeks) courses.push(entry)
     }
   }
   return courses

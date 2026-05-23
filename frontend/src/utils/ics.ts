@@ -25,7 +25,25 @@ function toIcsDate(date: Date): string {
 }
 
 function parseWeeks(weeksStr: string): number[] {
-  return weeksStr.split(',').map(w => parseInt(w.trim())).filter(n => !isNaN(n))
+  const result: number[] = []
+  weeksStr.split(',').forEach(part => {
+    const trimmed = part.trim()
+    const rangeMatch = trimmed.match(/^(\d+)[~-](\d+)(?:[（(](单|双)[）)])?$/)
+    if (rangeMatch) {
+      const start = parseInt(rangeMatch[1])
+      const end = parseInt(rangeMatch[2])
+      const parity = rangeMatch[3]
+      for (let i = start; i <= end; i++) {
+        if (!parity || (parity === '单' && i % 2 === 1) || (parity === '双' && i % 2 === 0)) {
+          result.push(i)
+        }
+      }
+    } else {
+      const num = parseInt(trimmed)
+      if (!isNaN(num)) result.push(num)
+    }
+  })
+  return result
 }
 
 function weeksToRanges(weeks: number[]): string {

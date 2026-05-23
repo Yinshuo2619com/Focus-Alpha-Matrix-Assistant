@@ -11,27 +11,27 @@
         <thead>
           <tr>
             <th class="time-col">节次</th>
-            <th v-for="day in weekdays" :key="day.value">{{ day.label }}</th>
+            <th v-for="day in visibleWeekdays" :key="day.value">{{ day.label }}</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="section in sections" :key="section">
             <td class="time-col">{{ section }}节</td>
-            <template v-for="day in 7" :key="day">
+            <template v-for="day in visibleWeekdays" :key="day.value">
               <!-- 跳过被合并的单元格 -->
               <td
-                v-if="!isCellHidden(day, section)"
+                v-if="!isCellHidden(day.value, section)"
                 class="course-cell"
-                :rowspan="getCellRowspan(day, section)"
+                :rowspan="getCellRowspan(day.value, section)"
               >
                 <div
-                  v-if="getCourse(day, section)"
+                  v-if="getCourse(day.value, section)"
                   class="course-block"
-                  :style="{ backgroundColor: getCourse(day, section)?.color || '#409EFF' }"
+                  :style="{ backgroundColor: getCourse(day.value, section)?.color || '#409EFF' }"
                 >
-                  <div class="course-name">{{ getCourse(day, section)?.courseName }}</div>
-                  <div class="course-detail">{{ getCourse(day, section)?.teacher }}</div>
-                  <div class="course-detail">{{ getCourse(day, section)?.location }}</div>
+                  <div class="course-name">{{ getCourse(day.value, section)?.courseName }}</div>
+                  <div class="course-detail">{{ getCourse(day.value, section)?.teacher }}</div>
+                  <div class="course-detail">{{ getCourse(day.value, section)?.location }}</div>
                 </div>
               </td>
             </template>
@@ -70,11 +70,17 @@ const parseWeeks = (weeks: string): number[] => {
   if (!weeks) return result
   weeks.split(',').forEach(part => {
     const trimmed = part.trim()
-    const rangeMatch = trimmed.match(/^(\d+)[~-](\d+)$/)
+    // 匹配范围，可选 (单) 或 (双) 后缀
+    const rangeMatch = trimmed.match(/^(\d+)[~-](\d+)(?:[（(](单|双)[）)])?$/)
     if (rangeMatch) {
       const start = parseInt(rangeMatch[1])
       const end = parseInt(rangeMatch[2])
-      for (let i = start; i <= end; i++) result.push(i)
+      const parity = rangeMatch[3] // '单' | '双' | undefined
+      for (let i = start; i <= end; i++) {
+        if (!parity || (parity === '单' && i % 2 === 1) || (parity === '双' && i % 2 === 0)) {
+          result.push(i)
+        }
+      }
     } else if (trimmed) {
       const num = parseInt(trimmed)
       if (!isNaN(num)) result.push(num)
@@ -127,6 +133,14 @@ const availableWeeks = computed(() => {
   return Array.from(allWeeks).sort((a, b) => a - b)
 })
 
+// 移动端自动隐藏无课的周末列
+const isMobile = ref(window.innerWidth <= 768)
+const visibleWeekdays = computed(() => {
+  if (!isMobile.value) return weekdays
+  const activeDays = new Set(activeCourses.value.map(c => c.dayOfWeek))
+  return weekdays.filter(d => activeDays.has(d.value))
+})
+
 // 根据学期起始日期或学期字符串推算当前周
 const autoSelectWeek = () => {
   if (availableWeeks.value.length === 0) return
@@ -175,6 +189,9 @@ const autoSelectWeek = () => {
 
 onMounted(() => {
   autoSelectWeek()
+  window.addEventListener('resize', () => {
+    isMobile.value = window.innerWidth <= 768
+  })
 })
 </script>
 
@@ -255,5 +272,48 @@ onMounted(() => {
   font-size: 10px;
   opacity: 0.9;
   line-height: 1.3;
+}
+
+/* 手机端适配 */
+@media screen and (max-width: 768px) {
+  .schedule-table th {
+    padding: 4px 2px;
+    height: 28px;
+    font-size: 11px;
+  }
+
+  .schedule-table td {
+    height: 38px;
+  }
+
+  .time-col {
+    width: 36px;
+    font-size: 9px;
+    padding: 2px !important;
+  }
+
+  .course-cell {
+    padding: 1px;
+  }
+
+  .course-block {
+    padding: 3px 4px;
+    border-radius: 4px;
+    gap: 1px;
+  }
+
+  .course-name {
+    font-size: 10px;
+    line-height: 1.2;
+  }
+
+  .course-detail {
+    font-size: 8px;
+    line-height: 1.2;
+  }
+
+  .week-selector {
+    margin-bottom: 8px;
+  }
 }
 </style>
