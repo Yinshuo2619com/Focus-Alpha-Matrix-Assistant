@@ -10,9 +10,15 @@
           返回
         </el-button>
         <h2>{{ isEdit ? '编辑推荐' : '发布推荐' }}</h2>
-        <el-button type="primary" @click="handleSubmit" :loading="submitting">
-          {{ isEdit ? '保存修改' : '发布' }}
-        </el-button>
+        <div class="header-actions">
+          <el-button @click="handleSaveDraft" :loading="savingDraft">
+            <el-icon><Document /></el-icon>
+            存为草稿
+          </el-button>
+          <el-button type="primary" @click="handleSubmit" :loading="submitting">
+            {{ isEdit ? '保存修改' : '发布' }}
+          </el-button>
+        </div>
       </div>
 
       <!-- 元信息 -->
@@ -94,13 +100,6 @@
             @dragover.prevent
             ref="editorRef"
           ></textarea>
-          <textarea
-            v-model="form.content"
-            class="md-textarea"
-            placeholder="在这里编写 Markdown 内容..."
-            @scroll="syncScroll('editor')"
-            ref="editorRef"
-          ></textarea>
         </div>
         <div class="preview-pane">
           <div class="pane-header">实时预览</div>
@@ -120,7 +119,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { ArrowLeft, Plus, Upload, Close, Picture } from '@element-plus/icons-vue'
+import { ArrowLeft, Plus, Upload, Close, Picture, Document } from '@element-plus/icons-vue'
 import MarkdownIt from 'markdown-it'
 import StatusBar from '@/components/StatusBar.vue'
 import request from '@/utils/request'
@@ -129,6 +128,7 @@ const route = useRoute()
 const router = useRouter()
 const isEdit = computed(() => !!route.params.id)
 const submitting = ref(false)
+const savingDraft = ref(false)
 
 const form = ref({
   title: '',
@@ -229,6 +229,30 @@ const handleDrop = async (e: DragEvent) => {
   await handleImageUpload(file)
 }
 
+const handleSaveDraft = async () => {
+  if (!form.value.title.trim()) {
+    ElMessage.warning('请输入标题')
+    return
+  }
+  savingDraft.value = true
+  try {
+    const draftData = { ...form.value, status: 0 }
+    if (isEdit.value) {
+      await request.put(`/recommendations/${route.params.id}`, draftData)
+      ElMessage.success('草稿已更新')
+    } else {
+      const res = await request.post('/recommendations', draftData) as any
+      ElMessage.success('草稿已保存')
+      // 跳转到编辑模式，以便后续继续编辑
+      router.replace(`/recommend/${res.data}/edit`)
+    }
+  } catch (err: any) {
+    ElMessage.error(err.message || '保存失败')
+  } finally {
+    savingDraft.value = false
+  }
+}
+
 const handleSubmit = async () => {
   if (!form.value.title.trim()) {
     ElMessage.warning('请输入标题')
@@ -240,11 +264,12 @@ const handleSubmit = async () => {
   }
   submitting.value = true
   try {
+    const publishData = { ...form.value, status: 1 }
     if (isEdit.value) {
-      await request.put(`/recommendations/${route.params.id}`, form.value)
+      await request.put(`/recommendations/${route.params.id}`, publishData)
       ElMessage.success('修改成功')
     } else {
-      await request.post('/recommendations', form.value)
+      await request.post('/recommendations', publishData)
       ElMessage.success('发布成功')
     }
     router.push('/tools')
@@ -303,6 +328,11 @@ onMounted(async () => {
     font-size: 18px;
     color: #303133;
   }
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
 }
 
 .meta-section {

@@ -12,4 +12,6 @@ public class RecommendationRequest {
     private String coverUrl;
 
     private String content;
+
+    private Integer status; // 0=草稿, 1=已发布
 }
