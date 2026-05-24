@@ -70,7 +70,30 @@
       <!-- MD 编辑器 + 预览 -->
       <div class="editor-body">
         <div class="editor-pane">
-          <div class="pane-header">Markdown 编辑</div>
+          <div class="pane-header">
+            <span>Markdown 编辑</span>
+            <div class="editor-toolbar">
+              <el-upload
+                :show-file-list="false"
+                :before-upload="handleImageUpload"
+                accept="image/*"
+              >
+                <el-button size="small" text>
+                  <el-icon><Picture /></el-icon>
+                  插入图片
+                </el-button>
+              </el-upload>
+            </div>
+          </div>
+          <textarea
+            v-model="form.content"
+            class="md-textarea"
+            placeholder="在这里编写 Markdown 内容..."
+            @scroll="syncScroll('editor')"
+            @drop="handleDrop"
+            @dragover.prevent
+            ref="editorRef"
+          ></textarea>
           <textarea
             v-model="form.content"
             class="md-textarea"
@@ -97,7 +120,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { ArrowLeft, Plus, Upload, Close } from '@element-plus/icons-vue'
+import { ArrowLeft, Plus, Upload, Close, Picture } from '@element-plus/icons-vue'
 import MarkdownIt from 'markdown-it'
 import StatusBar from '@/components/StatusBar.vue'
 import request from '@/utils/request'
@@ -147,6 +170,7 @@ const handleMdUpload = (file: File) => {
 const handleCoverSelect = async (file: File) => {
   const formData = new FormData()
   formData.append('file', file)
+  formData.append('type', 'cover')
   try {
     const res = await request.post('/cos/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
@@ -157,6 +181,52 @@ const handleCoverSelect = async (file: File) => {
     ElMessage.error(err.message || '封面上传失败')
   }
   return false
+}
+
+const insertTextAtCursor = (text: string) => {
+  const textarea = editorRef.value
+  if (!textarea) return
+  const start = textarea.selectionStart
+  const end = textarea.selectionEnd
+  const content = form.value.content
+  form.value.content = content.substring(0, start) + text + content.substring(end)
+  // 恢复光标位置
+  setTimeout(() => {
+    textarea.focus()
+    textarea.setSelectionRange(start + text.length, start + text.length)
+  }, 0)
+}
+
+const handleImageUpload = async (file: File) => {
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('type', 'image')
+  try {
+    ElMessage.info('图片上传中...')
+    const res = await request.post('/cos/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    }) as any
+    const url = res.data
+    const mdImage = `![${file.name}](${url})`
+    insertTextAtCursor(mdImage)
+    ElMessage.success('图片插入成功')
+  } catch (err: any) {
+    ElMessage.error(err.message || '图片上传失败')
+  }
+  return false
+}
+
+const handleDrop = async (e: DragEvent) => {
+  e.preventDefault()
+  const files = e.dataTransfer?.files
+  if (!files || files.length === 0) return
+
+  const file = files[0]
+  if (!file.type.startsWith('image/')) {
+    ElMessage.warning('只能拖拽图片文件')
+    return
+  }
+  await handleImageUpload(file)
 }
 
 const handleSubmit = async () => {
@@ -357,6 +427,15 @@ onMounted(async () => {
   color: #606266;
   background: #fafafa;
   border-bottom: 1px solid #ebeef5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.editor-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .md-textarea {
