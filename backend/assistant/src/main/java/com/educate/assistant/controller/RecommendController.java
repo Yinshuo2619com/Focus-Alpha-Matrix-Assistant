@@ -86,10 +86,13 @@ public class RecommendController {
     }
 
     @PostMapping("/cos/upload")
-    public Result<String> uploadFile(@RequestParam("file") MultipartFile file) {
+    public Result<String> uploadFile(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "type", defaultValue = "cover") String type) {
         try {
             String ext = getExtension(file.getOriginalFilename());
-            String objectKey = "recommend/covers/" + UUID.randomUUID() + ext;
+            String dir = "cover".equals(type) ? "recommend/covers/" : "recommend/images/";
+            String objectKey = dir + UUID.randomUUID() + ext;
             String url = cosService.uploadFile(file, objectKey);
             return Result.success(url);
         } catch (IOException e) {
