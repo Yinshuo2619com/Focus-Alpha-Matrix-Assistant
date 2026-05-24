@@ -65,6 +65,14 @@ public class CosService {
         return urlPrefix + "/" + objectKey;
     }
 
+    public String uploadBytes(byte[] data, String objectKey) {
+        if (!enabled) throw new RuntimeException("COS 未配置");
+        java.io.ByteArrayInputStream bis = new java.io.ByteArrayInputStream(data);
+        PutObjectRequest request = new PutObjectRequest(bucketName, objectKey, bis, null);
+        cosClient.putObject(request);
+        return urlPrefix + "/" + objectKey;
+    }
+
     public void deleteFile(String objectKey) {
         if (!enabled) return;
         cosClient.deleteObject(bucketName, objectKey);

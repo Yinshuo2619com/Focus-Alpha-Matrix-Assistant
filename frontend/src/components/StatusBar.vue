@@ -1,5 +1,20 @@
 <template>
     <div class="sticky-header">
+      <div class="nav-menu" @mouseenter="showNavMenu = true" @mouseleave="showNavMenu = false">
+        <el-icon class="hamburger-icon"><Operation /></el-icon>
+        <transition name="fade">
+          <div v-show="showNavMenu" class="dropdown-menu nav-dropdown">
+            <div class="menu-item" @click="goTo('/home')">
+              <el-icon><HomeFilled /></el-icon>
+              <span>主页</span>
+            </div>
+            <div class="menu-item" @click="goTo('/tools')">
+              <el-icon><Grid /></el-icon>
+              <span>工具</span>
+            </div>
+          </div>
+        </transition>
+      </div>
       <div class="header-center">
         <div class="date-line">{{ currentDate }}</div>
         <div class="weekday-line">{{ currentWeekday }}</div>
@@ -40,7 +55,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
-import { User, SwitchButton, UserFilled } from '@element-plus/icons-vue'
+import { User, SwitchButton, UserFilled, Operation, HomeFilled, Grid } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 
 
@@ -52,6 +67,12 @@ defineOptions({
 const router = useRouter()
 const store = useUserStore()
 const showMenu = ref(false)
+const showNavMenu = ref(false)
+
+const goTo = (path: string) => {
+  router.push(path)
+  showNavMenu.value = false
+}
 
 // 判断是否登录
 const isLoggedIn = computed(() => !!store.token)
@@ -151,6 +172,29 @@ onUnmounted(() => {
   font-size: 16px;
   font-weight: bold;
   font-family: 'Courier New', monospace;
+}
+
+.nav-menu {
+  position: fixed;
+  left: 20px;
+  top: 10px;
+  z-index: 1000;
+  cursor: pointer;
+}
+
+.hamburger-icon {
+  color: white;
+  font-size: 28px;
+  transition: transform 0.2s;
+}
+
+.hamburger-icon:hover {
+  transform: scale(1.1);
+}
+
+.nav-dropdown {
+  left: 0;
+  right: auto;
 }
 
 .user-info {
