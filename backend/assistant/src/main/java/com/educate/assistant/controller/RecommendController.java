@@ -7,6 +7,9 @@ import com.educate.assistant.service.RecommendService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -91,12 +94,29 @@ public class RecommendController {
             @RequestParam(value = "type", defaultValue = "cover") String type) {
         try {
             String ext = getExtension(file.getOriginalFilename());
+            String filename = UUID.randomUUID() + ext;
             String dir = "cover".equals(type) ? "recommend/covers/" : "recommend/images/";
-            String objectKey = dir + UUID.randomUUID() + ext;
-            String url = cosService.uploadFile(file, objectKey);
-            return Result.success(url);
+            String objectKey = dir + filename;
+            cosService.uploadFile(file, objectKey);
+            // 返回代理 URL，不暴露 COS 地址
+            String proxyUrl = "/api/recommend/image/" + filename;
+            return Result.success(proxyUrl);
         } catch (IOException e) {
             return Result.fail("文件上传失败: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/recommend/image/{filename}")
+    public ResponseEntity<byte[]> getImage(@PathVariable String filename) {
+        try {
+            String objectKey = "recommend/images/" + filename;
+            byte[] data = cosService.downloadFile(objectKey);
+            String contentType = cosService.getContentType(objectKey);
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_TYPE, contentType)
+                    .body(data);
+        } catch (Exception e) {
+            return ResponseEntity.notFound().build();
         }
     }
 

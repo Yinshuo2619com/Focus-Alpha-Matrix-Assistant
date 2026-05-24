@@ -4,7 +4,10 @@ import com.qcloud.cos.COSClient;
 import com.qcloud.cos.ClientConfig;
 import com.qcloud.cos.auth.BasicCOSCredentials;
 import com.qcloud.cos.auth.COSCredentials;
+import com.qcloud.cos.model.COSObject;
+import com.qcloud.cos.model.GetObjectRequest;
 import com.qcloud.cos.model.PutObjectRequest;
+import com.qcloud.cos.model.ObjectMetadata;
 import com.qcloud.cos.region.Region;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -76,6 +79,22 @@ public class CosService {
     public void deleteFile(String objectKey) {
         if (!enabled) return;
         cosClient.deleteObject(bucketName, objectKey);
+    }
+
+    public byte[] downloadFile(String objectKey) {
+        if (!enabled) throw new RuntimeException("COS 未配置");
+        COSObject cosObject = cosClient.getObject(new GetObjectRequest(bucketName, objectKey));
+        try (java.io.InputStream is = cosObject.getObjectContent()) {
+            return is.readAllBytes();
+        } catch (java.io.IOException e) {
+            throw new RuntimeException("文件下载失败: " + e.getMessage());
+        }
+    }
+
+    public String getContentType(String objectKey) {
+        if (!enabled) return "application/octet-stream";
+        ObjectMetadata metadata = cosClient.getObjectMetadata(bucketName, objectKey);
+        return metadata.getContentType();
     }
 
     public String extractObjectKey(String url) {
