@@ -33,6 +33,13 @@ public class RecommendController {
         return Result.success(list);
     }
 
+    @GetMapping("/recommendations/drafts")
+    public Result<List<Map<String, Object>>> getDrafts() {
+        Long userId = getCurrentUserId();
+        List<Map<String, Object>> drafts = recommendService.getDrafts(userId);
+        return Result.success(drafts);
+    }
+
     @GetMapping("/recommendations/{id}")
     public Result<Map<String, Object>> getDetail(@PathVariable Long id) {
         Map<String, Object> detail = recommendService.getDetail(id);

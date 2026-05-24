@@ -16,12 +16,23 @@ public class RecommendService {
     private final CosService cosService;
 
     public List<Map<String, Object>> getList() {
-        String sql = "SELECT r.id, r.title, r.summary, r.cover_url, r.views, r.likes, " +
+        String sql = "SELECT r.id, r.title, r.summary, r.cover_url, r.views, r.likes, r.status, " +
                      "r.created_at, r.updated_at, u.nickname AS author_name " +
                      "FROM user_recommendation r " +
                      "LEFT JOIN user u ON r.user_id = u.id " +
+                     "WHERE r.status = 1 " +
                      "ORDER BY r.created_at DESC";
         return jdbcTemplate.queryForList(sql);
+    }
+
+    public List<Map<String, Object>> getDrafts(Long userId) {
+        String sql = "SELECT r.id, r.title, r.summary, r.cover_url, r.views, r.likes, r.status, " +
+                     "r.created_at, r.updated_at, u.nickname AS author_name " +
+                     "FROM user_recommendation r " +
+                     "LEFT JOIN user u ON r.user_id = u.id " +
+                     "WHERE r.user_id = ? AND r.status = 0 " +
+                     "ORDER BY r.updated_at DESC";
+        return jdbcTemplate.queryForList(sql, userId);
     }
 
     public Map<String, Object> getDetail(Long id) {
@@ -41,10 +52,11 @@ public class RecommendService {
 
     @Transactional
     public Long create(Long userId, RecommendationRequest request, String contentUrl) {
-        String sql = "INSERT INTO user_recommendation (user_id, title, summary, cover_url, content_url, views, likes) " +
-                     "VALUES (?, ?, ?, ?, ?, 0, 0)";
+        int status = request.getStatus() != null ? request.getStatus() : 1;
+        String sql = "INSERT INTO user_recommendation (user_id, title, summary, cover_url, content_url, views, likes, status) " +
+                     "VALUES (?, ?, ?, ?, ?, 0, 0, ?)";
         jdbcTemplate.update(sql, userId, request.getTitle(), request.getSummary(),
-                           request.getCoverUrl(), contentUrl);
+                           request.getCoverUrl(), contentUrl, status);
         return jdbcTemplate.queryForObject("SELECT LAST_INSERT_ID()", Long.class);
     }
 
@@ -58,9 +70,10 @@ public class RecommendService {
             throw new RuntimeException("无权修改此推荐");
         }
 
-        String sql = "UPDATE user_recommendation SET title = ?, summary = ?, cover_url = ?, content_url = ?, updated_at = NOW() WHERE id = ?";
+        int status = request.getStatus() != null ? request.getStatus() : 1;
+        String sql = "UPDATE user_recommendation SET title = ?, summary = ?, cover_url = ?, content_url = ?, status = ?, updated_at = NOW() WHERE id = ?";
         jdbcTemplate.update(sql, request.getTitle(), request.getSummary(),
-                           request.getCoverUrl(), contentUrl, id);
+                           request.getCoverUrl(), contentUrl, status, id);
     }
 
     @Transactional

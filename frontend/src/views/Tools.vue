@@ -40,6 +40,12 @@
         </template>
         <template v-else>
           <div class="recommend-header">
+            <div class="header-left">
+              <el-button @click="showDrafts = !showDrafts">
+                <el-icon><Document /></el-icon>
+                {{ showDrafts ? '查看已发布' : '我的草稿' }}
+              </el-button>
+            </div>
             <el-button type="primary" @click="$router.push('/recommend/new')">
               <el-icon><Plus /></el-icon>
               发布推荐
@@ -62,22 +68,23 @@
               v-for="item in recommendations"
               :key="item.id"
               class="recommend-card"
-              @click="$router.push(`/recommend/${item.id}`)"
+              @click="showDrafts ? $router.push(`/recommend/${item.id}/edit`) : $router.push(`/recommend/${item.id}`)"
             >
               <div class="card-cover">
                 <img v-if="item.coverUrl" :src="item.coverUrl" alt="封面" />
                 <div v-else class="cover-placeholder">
                   <el-icon><Document /></el-icon>
                 </div>
+                <div v-if="showDrafts" class="draft-badge">草稿</div>
               </div>
               <div class="card-body">
                 <h3 class="card-title">{{ item.title }}</h3>
-                <p class="card-summary">{{ item.summary }}</p>
+                <p class="card-summary">{{ item.summary || '暂无简介' }}</p>
                 <div class="card-footer">
                   <span class="card-author">{{ item.authorName }}</span>
-                  <span class="card-time">{{ formatTime(item.createdAt) }}</span>
+                  <span class="card-time">{{ formatTime(item.updatedAt) }}</span>
                 </div>
-                <div class="card-stats">
+                <div v-if="!showDrafts" class="card-stats">
                   <span><el-icon><View /></el-icon> {{ item.views }}</span>
                   <span><el-icon><Star /></el-icon> {{ item.likes }}</span>
                 </div>
@@ -116,13 +123,15 @@ const store = useUserStore()
 const isLoggedIn = computed(() => !!store.token)
 const activeTab = ref('tools')
 const loading = ref(false)
+const showDrafts = ref(false)
 const recommendations = ref<Recommendation[]>([])
 
 const fetchRecommendations = async () => {
   if (!isLoggedIn.value) return
   loading.value = true
   try {
-    const res = await request.get('/recommendations') as any
+    const url = showDrafts.value ? '/recommendations/drafts' : '/recommendations'
+    const res = await request.get(url) as any
     recommendations.value = res.data || []
   } catch (err: any) {
     ElMessage.error(err.message || '获取推荐列表失败')
@@ -141,6 +150,12 @@ const formatTime = (dateStr: string) => {
 
 watch(activeTab, (tab) => {
   if (tab === 'recommend' && isLoggedIn.value) {
+    fetchRecommendations()
+  }
+})
+
+watch(showDrafts, () => {
+  if (isLoggedIn.value) {
     fetchRecommendations()
   }
 })
@@ -242,7 +257,8 @@ onMounted(() => {
 
 .recommend-header {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 20px;
 }
 
@@ -282,6 +298,7 @@ onMounted(() => {
 .card-cover {
   height: 140px;
   overflow: hidden;
+  position: relative;
 
   img {
     width: 100%;
@@ -301,6 +318,18 @@ onMounted(() => {
       font-size: 40px;
       color: rgba(255, 255, 255, 0.6);
     }
+  }
+
+  .draft-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: #e6a23c;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
   }
 }
 
