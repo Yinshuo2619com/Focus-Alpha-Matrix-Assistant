@@ -44,12 +44,33 @@ const router = createRouter({
       name: 'ShareSchedule',
       component: () => import('@/views/ShareSchedule.vue'),
       meta: { public: true }
+    },
+    {
+      path: '/tools',
+      name: 'Tools',
+      component: () => import('@/views/Tools.vue'),
+      meta: { public: true }
+    },
+    {
+      path: '/recommend/new',
+      name: 'RecommendNew',
+      component: () => import('@/views/RecommendEditor.vue')
+    },
+    {
+      path: '/recommend/:id',
+      name: 'RecommendDetail',
+      component: () => import('@/views/RecommendDetail.vue')
+    },
+    {
+      path: '/recommend/:id/edit',
+      name: 'RecommendEdit',
+      component: () => import('@/views/RecommendEditor.vue')
     }
   ]
 })
 
 // 公开页面（不需要登录）
-const publicPages = ['/login', '/register', '/home']
+const publicPages = ['/login', '/register', '/home', '/tools']
 
 // 路由守卫：默认需要登录，公开页面除外
 router.beforeEach((to, _from, next) => {

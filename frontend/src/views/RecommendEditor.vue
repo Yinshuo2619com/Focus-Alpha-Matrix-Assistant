@@ -1,0 +1,479 @@
+<template>
+  <div class="editor-page">
+    <StatusBar />
+    <div class="status-bar-placeholder"></div>
+
+    <div class="editor-container">
+      <div class="editor-header">
+        <el-button @click="$router.back()">
+          <el-icon><ArrowLeft /></el-icon>
+          返回
+        </el-button>
+        <h2>{{ isEdit ? '编辑推荐' : '发布推荐' }}</h2>
+        <el-button type="primary" @click="handleSubmit" :loading="submitting">
+          {{ isEdit ? '保存修改' : '发布' }}
+        </el-button>
+      </div>
+
+      <!-- 元信息 -->
+      <div class="meta-section">
+        <div class="meta-row">
+          <div class="meta-field">
+            <label>标题 <span class="required">*</span></label>
+            <el-input v-model="form.title" placeholder="请输入标题" maxlength="100" show-word-limit />
+          </div>
+        </div>
+        <div class="meta-row">
+          <div class="meta-field">
+            <label>简介</label>
+            <el-input v-model="form.summary" type="textarea" :rows="2" placeholder="一句话描述你的推荐内容" maxlength="500" show-word-limit />
+          </div>
+        </div>
+        <div class="meta-row">
+          <div class="meta-field">
+            <label>封面图</label>
+            <div class="cover-upload">
+              <el-upload
+                :show-file-list="false"
+                :before-upload="handleCoverSelect"
+                accept="image/*"
+              >
+                <div v-if="form.coverUrl" class="cover-preview">
+                  <img :src="form.coverUrl" alt="封面" />
+                  <div class="cover-remove" @click.stop="form.coverUrl = ''">
+                    <el-icon><Close /></el-icon>
+                  </div>
+                </div>
+                <div v-else class="cover-placeholder">
+                  <el-icon><Plus /></el-icon>
+                  <span>上传封面</span>
+                </div>
+              </el-upload>
+            </div>
+          </div>
+          <div class="meta-field">
+            <label>导入 MD 文件</label>
+            <el-upload
+              :show-file-list="false"
+              :before-upload="handleMdUpload"
+              accept=".md,.markdown,.txt"
+            >
+              <el-button>
+                <el-icon><Upload /></el-icon>
+                选择文件
+              </el-button>
+            </el-upload>
+          </div>
+        </div>
+      </div>
+
+      <!-- MD 编辑器 + 预览 -->
+      <div class="editor-body">
+        <div class="editor-pane">
+          <div class="pane-header">Markdown 编辑</div>
+          <textarea
+            v-model="form.content"
+            class="md-textarea"
+            placeholder="在这里编写 Markdown 内容..."
+            @scroll="syncScroll('editor')"
+            ref="editorRef"
+          ></textarea>
+        </div>
+        <div class="preview-pane">
+          <div class="pane-header">实时预览</div>
+          <div
+            class="md-preview"
+            v-html="renderedContent"
+            @scroll="syncScroll('preview')"
+            ref="previewRef"
+          ></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import { ArrowLeft, Plus, Upload, Close } from '@element-plus/icons-vue'
+import MarkdownIt from 'markdown-it'
+import StatusBar from '@/components/StatusBar.vue'
+import request from '@/utils/request'
+
+const route = useRoute()
+const router = useRouter()
+const isEdit = computed(() => !!route.params.id)
+const submitting = ref(false)
+
+const form = ref({
+  title: '',
+  summary: '',
+  content: '',
+  coverUrl: '',
+})
+
+const md = new MarkdownIt()
+const renderedContent = computed(() => md.render(form.value.content || ''))
+
+const editorRef = ref<HTMLTextAreaElement>()
+const previewRef = ref<HTMLDivElement>()
+
+let syncing = false
+const syncScroll = (source: 'editor' | 'preview') => {
+  if (syncing) return
+  syncing = true
+  if (source === 'editor' && editorRef.value && previewRef.value) {
+    const ratio = editorRef.value.scrollTop / (editorRef.value.scrollHeight - editorRef.value.clientHeight)
+    previewRef.value.scrollTop = ratio * (previewRef.value.scrollHeight - previewRef.value.clientHeight)
+  } else if (source === 'preview' && editorRef.value && previewRef.value) {
+    const ratio = previewRef.value.scrollTop / (previewRef.value.scrollHeight - previewRef.value.clientHeight)
+    editorRef.value.scrollTop = ratio * (editorRef.value.scrollHeight - editorRef.value.clientHeight)
+  }
+  setTimeout(() => { syncing = false }, 50)
+}
+
+const handleMdUpload = (file: File) => {
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    form.value.content = e.target?.result as string || ''
+    ElMessage.success('文件已导入')
+  }
+  reader.readAsText(file)
+  return false
+}
+
+const handleCoverSelect = async (file: File) => {
+  const formData = new FormData()
+  formData.append('file', file)
+  try {
+    const res = await request.post('/cos/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    }) as any
+    form.value.coverUrl = res.data
+    ElMessage.success('封面上传成功')
+  } catch (err: any) {
+    ElMessage.error(err.message || '封面上传失败')
+  }
+  return false
+}
+
+const handleSubmit = async () => {
+  if (!form.value.title.trim()) {
+    ElMessage.warning('请输入标题')
+    return
+  }
+  if (!form.value.content.trim()) {
+    ElMessage.warning('请输入内容')
+    return
+  }
+  submitting.value = true
+  try {
+    if (isEdit.value) {
+      await request.put(`/recommendations/${route.params.id}`, form.value)
+      ElMessage.success('修改成功')
+    } else {
+      await request.post('/recommendations', form.value)
+      ElMessage.success('发布成功')
+    }
+    router.push('/tools')
+  } catch (err: any) {
+    ElMessage.error(err.message || '操作失败')
+  } finally {
+    submitting.value = false
+  }
+}
+
+onMounted(async () => {
+  if (isEdit.value) {
+    try {
+      const res = await request.get(`/recommendations/${route.params.id}`) as any
+      const data = res.data
+      form.value.title = data.title
+      form.value.summary = data.summary || ''
+      form.value.coverUrl = data.coverUrl || ''
+      // Fetch MD content from COS
+      if (data.contentUrl) {
+        const contentRes = await fetch(data.contentUrl)
+        form.value.content = await contentRes.text()
+      }
+    } catch (err: any) {
+      ElMessage.error('加载推荐内容失败')
+      router.back()
+    }
+  }
+})
+</script>
+
+<style scoped lang="scss">
+.editor-page {
+  min-height: 100vh;
+  background: #f5f7fa;
+}
+
+.status-bar-placeholder {
+  height: 60px;
+}
+
+.editor-container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+
+  h2 {
+    margin: 0;
+    font-size: 18px;
+    color: #303133;
+  }
+}
+
+.meta-section {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.meta-row {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 16px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.meta-field {
+  flex: 1;
+
+  label {
+    display: block;
+    font-size: 14px;
+    color: #606266;
+    margin-bottom: 6px;
+    font-weight: 500;
+
+    .required {
+      color: #f56c6c;
+    }
+  }
+}
+
+.cover-upload {
+  .cover-preview {
+    width: 160px;
+    height: 90px;
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .cover-remove {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 22px;
+      height: 22px;
+      background: rgba(0, 0, 0, 0.5);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: white;
+      font-size: 12px;
+    }
+  }
+
+  .cover-placeholder {
+    width: 160px;
+    height: 90px;
+    border: 1px dashed #dcdfe6;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    color: #909399;
+    cursor: pointer;
+    transition: border-color 0.2s;
+
+    &:hover {
+      border-color: #409eff;
+      color: #409eff;
+    }
+
+    .el-icon {
+      font-size: 24px;
+    }
+
+    span {
+      font-size: 12px;
+    }
+  }
+}
+
+.editor-body {
+  display: flex;
+  gap: 0;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  height: 60vh;
+}
+
+.editor-pane,
+.preview-pane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.editor-pane {
+  border-right: 1px solid #ebeef5;
+}
+
+.pane-header {
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #606266;
+  background: #fafafa;
+  border-bottom: 1px solid #ebeef5;
+}
+
+.md-textarea {
+  flex: 1;
+  border: none;
+  outline: none;
+  resize: none;
+  padding: 16px;
+  font-size: 14px;
+  font-family: 'Courier New', Consolas, monospace;
+  line-height: 1.6;
+  color: #303133;
+  background: #fff;
+}
+
+.md-preview {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+  font-size: 14px;
+  line-height: 1.8;
+  color: #303133;
+
+  :deep(h1), :deep(h2), :deep(h3) {
+    margin: 16px 0 8px;
+    font-weight: 600;
+  }
+
+  :deep(h1) { font-size: 22px; }
+  :deep(h2) { font-size: 18px; }
+  :deep(h3) { font-size: 16px; }
+
+  :deep(p) {
+    margin: 8px 0;
+  }
+
+  :deep(code) {
+    background: #f5f7fa;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-family: 'Courier New', Consolas, monospace;
+  }
+
+  :deep(pre) {
+    background: #f5f7fa;
+    padding: 12px;
+    border-radius: 8px;
+    overflow-x: auto;
+
+    code {
+      background: none;
+      padding: 0;
+    }
+  }
+
+  :deep(blockquote) {
+    border-left: 4px solid #409eff;
+    padding-left: 12px;
+    margin: 8px 0;
+    color: #606266;
+  }
+
+  :deep(ul), :deep(ol) {
+    padding-left: 24px;
+    margin: 8px 0;
+  }
+
+  :deep(img) {
+    max-width: 100%;
+    border-radius: 8px;
+  }
+
+  :deep(table) {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 8px 0;
+
+    th, td {
+      border: 1px solid #ebeef5;
+      padding: 8px 12px;
+      text-align: left;
+    }
+
+    th {
+      background: #f5f7fa;
+      font-weight: 600;
+    }
+  }
+}
+
+@media screen and (max-width: 768px) {
+  .editor-container {
+    padding: 12px;
+  }
+
+  .meta-row {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .editor-body {
+    flex-direction: column;
+    height: auto;
+  }
+
+  .editor-pane {
+    border-right: none;
+    border-bottom: 1px solid #ebeef5;
+  }
+
+  .md-textarea {
+    min-height: 200px;
+  }
+
+  .md-preview {
+    min-height: 200px;
+  }
+}
+</style>
