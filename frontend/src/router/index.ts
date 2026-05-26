@@ -29,6 +29,16 @@ const router = createRouter({
       component: () => import('@/views/Profile.vue')
     },
     {
+      path: '/favorites',
+      name: 'Favorites',
+      component: () => import('@/views/Favorites.vue')
+    },
+    {
+      path: '/notifications',
+      name: 'Notifications',
+      component: () => import('@/views/Notifications.vue')
+    },
+    {
       path: '/admin/users',
       name: 'UserManagement',
       component: () => import('@/views/admin/UserManagement.vue'),
@@ -64,6 +74,16 @@ const router = createRouter({
     {
       path: '/recommend/:id/edit',
       name: 'RecommendEdit',
+      component: () => import('@/views/RecommendEditor.vue')
+    },
+    {
+      path: '/tool/new',
+      name: 'ToolNew',
+      component: () => import('@/views/RecommendEditor.vue')
+    },
+    {
+      path: '/tool/:id/edit',
+      name: 'ToolEdit',
       component: () => import('@/views/RecommendEditor.vue')
     }
   ]

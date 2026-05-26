@@ -14,4 +14,6 @@ public class RecommendationRequest {
     private String content;
 
     private Integer status; // 0=草稿, 1=已发布
+
+    private Integer type; // 0=推荐, 1=工具
 }

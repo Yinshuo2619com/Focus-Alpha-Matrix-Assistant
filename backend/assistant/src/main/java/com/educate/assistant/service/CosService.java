@@ -1,5 +1,7 @@
 package com.educate.assistant.service;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.qcloud.cos.COSClient;
 import com.qcloud.cos.ClientConfig;
 import com.qcloud.cos.auth.BasicCOSCredentials;
@@ -16,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.time.Duration;
 
 @Service
 public class CosService {
@@ -37,6 +40,14 @@ public class CosService {
 
     private COSClient cosClient;
     private boolean enabled;
+
+    private record CachedFile(byte[] data, String contentType) {}
+
+    private final Cache<String, CachedFile> fileCache = Caffeine.newBuilder()
+            .maximumWeight(50 * 1024 * 1024) // 50MB
+            .weigher((String key, CachedFile value) -> value.data().length)
+            .expireAfterWrite(Duration.ofMinutes(10))
+            .build();
 
     @PostConstruct
     public void init() {
@@ -83,9 +94,14 @@ public class CosService {
 
     public byte[] downloadFile(String objectKey) {
         if (!enabled) throw new RuntimeException("COS 未配置");
+        CachedFile cached = fileCache.getIfPresent(objectKey);
+        if (cached != null) return cached.data();
         COSObject cosObject = cosClient.getObject(new GetObjectRequest(bucketName, objectKey));
         try (java.io.InputStream is = cosObject.getObjectContent()) {
-            return is.readAllBytes();
+            byte[] data = is.readAllBytes();
+            String contentType = cosObject.getObjectMetadata().getContentType();
+            fileCache.put(objectKey, new CachedFile(data, contentType));
+            return data;
         } catch (java.io.IOException e) {
             throw new RuntimeException("文件下载失败: " + e.getMessage());
         }
@@ -93,6 +109,8 @@ public class CosService {
 
     public String getContentType(String objectKey) {
         if (!enabled) return "application/octet-stream";
+        CachedFile cached = fileCache.getIfPresent(objectKey);
+        if (cached != null) return cached.contentType();
         ObjectMetadata metadata = cosClient.getObjectMetadata(bucketName, objectKey);
         return metadata.getContentType();
     }
