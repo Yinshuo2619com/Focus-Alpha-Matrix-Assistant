@@ -2,15 +2,21 @@
     <div class="sticky-header">
       <div class="nav-menu" @mouseenter="showNavMenu = true" @mouseleave="showNavMenu = false">
         <el-icon class="hamburger-icon"><Operation /></el-icon>
+        <span v-if="unreadCount > 0" class="nav-badge"></span>
         <transition name="fade">
           <div v-show="showNavMenu" class="dropdown-menu nav-dropdown">
             <div class="menu-item" @click="goTo('/home')">
               <el-icon><HomeFilled /></el-icon>
               <span>主页</span>
             </div>
-            <div class="menu-item" @click="goTo('/tools')">
+            <div class="menu-item" @click="goTo('/tools?from=nav')">
               <el-icon><Grid /></el-icon>
               <span>工具</span>
+            </div>
+            <div v-if="isLoggedIn" class="menu-item" @click="goTo('/notifications')">
+              <el-icon><Bell /></el-icon>
+              <span>消息</span>
+              <span v-if="unreadCount > 0" class="menu-badge">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
             </div>
           </div>
         </transition>
@@ -31,6 +37,10 @@
                 <el-icon><User /></el-icon>
                 <span>个人中心</span>
               </div>
+              <div class="menu-item" @click="goTo('/favorites')">
+                <el-icon><Star /></el-icon>
+                <span>我的收藏</span>
+              </div>
               <div v-if="store.isAdmin" class="menu-item" @click="goToUserManagement">
                 <el-icon><User /></el-icon>
                 <span>用户管理</span>
@@ -45,6 +55,10 @@
                 <el-icon><UserFilled /></el-icon>
                 <span>登录</span>
               </div>
+              <div class="menu-item" @click="handleRegister">
+                <el-icon><User /></el-icon>
+                <span>注册</span>
+              </div>
             </template>
           </div>
         </transition>
@@ -55,8 +69,9 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
-import { User, SwitchButton, UserFilled, Operation, HomeFilled, Grid } from '@element-plus/icons-vue'
+import { User, SwitchButton, UserFilled, Operation, HomeFilled, Grid, Star, Bell } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
+import { useNotification } from '@/composables/useNotification'
 
 
 defineOptions({
@@ -68,6 +83,7 @@ const router = useRouter()
 const store = useUserStore()
 const showMenu = ref(false)
 const showNavMenu = ref(false)
+const { unreadCount, connect, fetchUnreadCount } = useNotification()
 
 const goTo = (path: string) => {
   router.push(path)
@@ -99,6 +115,11 @@ const handleLogin = () => {
   router.push('/login')
 }
 
+const handleRegister = () => {
+  showMenu.value = false
+  router.push('/register')
+}
+
 const goToUserManagement = () => {
   // 跳转到用户管理页面
   router.push('/admin/users')
@@ -126,7 +147,13 @@ const updateTime = () => {
   animationFrameId = requestAnimationFrame(updateTime)
 }
 
-onMounted(() => updateTime())
+onMounted(() => {
+  updateTime()
+  if (isLoggedIn.value) {
+    fetchUnreadCount()
+    connect()
+  }
+})
 onUnmounted(() => {
   if (animationFrameId) cancelAnimationFrame(animationFrameId)
 })
@@ -186,6 +213,30 @@ onUnmounted(() => {
   color: white;
   font-size: 28px;
   transition: transform 0.2s;
+}
+
+.nav-badge {
+  position: absolute;
+  top: -2px;
+  right: -4px;
+  width: 10px;
+  height: 10px;
+  background: #f56c6c;
+  border-radius: 50%;
+  border: 2px solid #b7a091;
+}
+
+.menu-badge {
+  margin-left: auto;
+  background: #f56c6c;
+  color: white;
+  font-size: 10px;
+  min-width: 18px;
+  height: 18px;
+  line-height: 18px;
+  border-radius: 9px;
+  text-align: center;
+  padding: 0 5px;
 }
 
 .hamburger-icon:hover {

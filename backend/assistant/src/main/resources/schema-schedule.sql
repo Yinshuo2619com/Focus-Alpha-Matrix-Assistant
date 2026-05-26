@@ -9,8 +9,10 @@ CREATE TABLE IF NOT EXISTS `schedule` (
     `start_date`    DATE         DEFAULT NULL COMMENT '学期起始日期',
     `created_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `share_token`   VARCHAR(16)  DEFAULT NULL COMMENT '分享令牌',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_user_semester` (`user_id`, `school_id`, `semester`),
+    UNIQUE KEY `uk_share_token` (`share_token`),
     KEY `idx_user_id` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

@@ -9,8 +9,12 @@
           <el-icon><ArrowLeft /></el-icon>
           返回
         </el-button>
-        <h2>{{ isEdit ? '编辑推荐' : '发布推荐' }}</h2>
+        <h2>{{ isEdit ? (isTool ? '编辑工具' : '编辑推荐') : (isTool ? '发布工具' : '发布推荐') }}</h2>
         <div class="header-actions">
+          <el-button v-if="isEdit" type="danger" @click="handleDelete">
+            <el-icon><Delete /></el-icon>
+            删除
+          </el-button>
           <el-button @click="handleSaveDraft" :loading="savingDraft">
             <el-icon><Document /></el-icon>
             存为草稿
@@ -71,10 +75,27 @@
             </el-upload>
           </div>
         </div>
+        <div v-if="isTool" class="meta-row">
+          <div class="meta-field">
+            <label>跳转卡片</label>
+            <div class="redirect-toggle">
+              <el-switch v-model="isRedirect" />
+              <span class="redirect-hint">{{ isRedirect ? '点击卡片将直接跳转到链接地址' : '普通卡片，点击进入详情页' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 跳转卡片 URL 输入 -->
+      <div v-if="isRedirect" class="editor-body redirect-url-body">
+        <div class="redirect-url-field">
+          <label>跳转链接 <span class="required">*</span></label>
+          <el-input v-model="form.content" placeholder="https://example.com" />
+        </div>
       </div>
 
       <!-- MD 编辑器 + 预览 -->
-      <div class="editor-body">
+      <div v-else class="editor-body">
         <div class="editor-pane">
           <div class="pane-header">
             <span>Markdown 编辑</span>
@@ -116,10 +137,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import { ArrowLeft, Plus, Upload, Close, Picture, Document } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { ArrowLeft, Plus, Upload, Close, Picture, Document, Delete } from '@element-plus/icons-vue'
 import MarkdownIt from 'markdown-it'
 import StatusBar from '@/components/StatusBar.vue'
 import request from '@/utils/request'
@@ -127,6 +148,8 @@ import request from '@/utils/request'
 const route = useRoute()
 const router = useRouter()
 const isEdit = computed(() => !!route.params.id)
+const isTool = computed(() => route.path.startsWith('/tool/'))
+const apiBase = computed(() => isTool.value ? '/tools' : '/recommendations')
 const submitting = ref(false)
 const savingDraft = ref(false)
 
@@ -136,6 +159,7 @@ const form = ref({
   content: '',
   coverUrl: '',
 })
+const isRedirect = ref(false)
 
 const md = new MarkdownIt()
 const renderedContent = computed(() => md.render(form.value.content || ''))
@@ -172,6 +196,7 @@ const handleCoverSelect = async (file: File) => {
   formData.append('file', file)
   formData.append('type', 'cover')
   try {
+    ElMessage.info('封面上传中...')
     const res = await request.post('/cos/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     }) as any
@@ -190,7 +215,6 @@ const insertTextAtCursor = (text: string) => {
   const end = textarea.selectionEnd
   const content = form.value.content
   form.value.content = content.substring(0, start) + text + content.substring(end)
-  // 恢复光标位置
   setTimeout(() => {
     textarea.focus()
     textarea.setSelectionRange(start + text.length, start + text.length)
@@ -207,8 +231,7 @@ const handleImageUpload = async (file: File) => {
       headers: { 'Content-Type': 'multipart/form-data' }
     }) as any
     const url = res.data
-    const mdImage = `![${file.name}](${url})`
-    insertTextAtCursor(mdImage)
+    insertTextAtCursor(`![${file.name}](${url})`)
     ElMessage.success('图片插入成功')
   } catch (err: any) {
     ElMessage.error(err.message || '图片上传失败')
@@ -220,7 +243,6 @@ const handleDrop = async (e: DragEvent) => {
   e.preventDefault()
   const files = e.dataTransfer?.files
   if (!files || files.length === 0) return
-
   const file = files[0]
   if (!file.type.startsWith('image/')) {
     ElMessage.warning('只能拖拽图片文件')
@@ -238,13 +260,18 @@ const handleSaveDraft = async () => {
   try {
     const draftData = { ...form.value, status: 0 }
     if (isEdit.value) {
-      await request.put(`/recommendations/${route.params.id}`, draftData)
+      await request.put(`${apiBase.value}/${route.params.id}`, draftData)
       ElMessage.success('草稿已更新')
     } else {
-      const res = await request.post('/recommendations', draftData) as any
+      const res = await request.post(apiBase.value, draftData) as any
+      const newId = res.data
+      if (!newId) {
+        ElMessage.error('保存失败：服务器未返回 ID')
+        return
+      }
       ElMessage.success('草稿已保存')
-      // 跳转到编辑模式，以便后续继续编辑
-      router.replace(`/recommend/${res.data}/edit`)
+      const editPath = isTool.value ? `/tool/${newId}/edit` : `/recommend/${newId}/edit`
+      await router.replace(editPath)
     }
   } catch (err: any) {
     ElMessage.error(err.message || '保存失败')
@@ -264,12 +291,13 @@ const handleSubmit = async () => {
   }
   submitting.value = true
   try {
-    const publishData = { ...form.value, status: 1 }
+    const status = isRedirect.value ? 2 : 1
+    const publishData = { ...form.value, status }
     if (isEdit.value) {
-      await request.put(`/recommendations/${route.params.id}`, publishData)
+      await request.put(`${apiBase.value}/${route.params.id}`, publishData)
       ElMessage.success('修改成功')
     } else {
-      await request.post('/recommendations', publishData)
+      await request.post(apiBase.value, publishData)
       ElMessage.success('发布成功')
     }
     router.push('/tools')
@@ -280,23 +308,54 @@ const handleSubmit = async () => {
   }
 }
 
-onMounted(async () => {
-  if (isEdit.value) {
-    try {
-      const res = await request.get(`/recommendations/${route.params.id}`) as any
-      const data = res.data
-      form.value.title = data.title
-      form.value.summary = data.summary || ''
-      form.value.coverUrl = data.coverUrl || ''
-      // Fetch MD content from COS
-      if (data.contentUrl) {
-        const contentRes = await fetch(data.contentUrl)
-        form.value.content = await contentRes.text()
-      }
-    } catch (err: any) {
-      ElMessage.error('加载推荐内容失败')
-      router.back()
+const handleDelete = async () => {
+  try {
+    const label = isTool.value ? '这个工具' : '这条推荐'
+    await ElMessageBox.confirm(`确定删除${label}吗？`, '确认删除', {
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+      type: 'warning',
+    })
+    await request.delete(`${apiBase.value}/${route.params.id}`)
+    ElMessage.success('删除成功')
+    router.push('/tools')
+  } catch (err: any) {
+    if (err !== 'cancel') {
+      ElMessage.error(err.message || '删除失败')
     }
+  }
+}
+
+const loadRecommendation = async (id: string) => {
+  try {
+    // 详情接口统一走 recommendations，后端不过滤 type
+    const res = await request.get(`/recommendations/${id}`) as any
+    const data = res.data
+    form.value.title = data.title
+    form.value.summary = data.summary || ''
+    form.value.coverUrl = data.coverUrl || ''
+    if (data.status === 2) {
+      isRedirect.value = true
+      form.value.content = data.contentUrl || ''
+    } else if (data.contentUrl) {
+      const contentRes = await fetch(data.contentUrl)
+      form.value.content = await contentRes.text()
+    }
+  } catch (err: any) {
+    ElMessage.error(isTool.value ? '加载工具内容失败' : '加载推荐内容失败')
+    router.back()
+  }
+}
+
+onMounted(() => {
+  if (isEdit.value) {
+    loadRecommendation(route.params.id as string)
+  }
+})
+
+watch(() => route.params.id, (newId) => {
+  if (newId) {
+    loadRecommendation(newId as string)
   }
 })
 </script>
@@ -425,6 +484,36 @@ onMounted(async () => {
 
     span {
       font-size: 12px;
+    }
+  }
+}
+
+.redirect-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.redirect-hint {
+  font-size: 13px;
+  color: #909399;
+}
+
+.redirect-url-body {
+  height: auto;
+  padding: 20px;
+}
+
+.redirect-url-field {
+  label {
+    display: block;
+    font-size: 14px;
+    color: #606266;
+    margin-bottom: 6px;
+    font-weight: 500;
+
+    .required {
+      color: #f56c6c;
     }
   }
 }

@@ -251,7 +251,7 @@ const handleRegister = async () => {
 
   loading.value = true
   try {
-    await request.post('/auth/register', {
+    const res: any = await request.post('/auth/register', {
       username: registerForm.username,
       password: registerForm.password,
       nickname: registerForm.nickname,
@@ -259,8 +259,12 @@ const handleRegister = async () => {
       email: registerForm.email
     })
 
-    showMessage('注册成功！正在跳转到登录页...', 'success')
-    setTimeout(() => router.push('/login'), 1000)
+    if (res.code === 200) {
+      showMessage('注册成功！正在跳转到登录页...', 'success')
+      setTimeout(() => router.push('/login'), 1000)
+    } else {
+      showMessage(res.message || '注册失败', 'error')
+    }
   } catch (error: any) {
     showMessage(error.message || '注册失败，请重试', 'error')
   } finally {
