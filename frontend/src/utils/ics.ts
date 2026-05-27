@@ -65,6 +65,24 @@ function weeksToRanges(weeks: number[]): string {
   return ranges.join(',')
 }
 
+function getContiguousRanges(weeks: number[]): [number, number][] {
+  const sorted = [...weeks].sort((a, b) => a - b)
+  const ranges: [number, number][] = []
+  let start = sorted[0]
+  let end = sorted[0]
+  for (let i = 1; i < sorted.length; i++) {
+    if (sorted[i] === end + 1) {
+      end = sorted[i]
+    } else {
+      ranges.push([start, end])
+      start = sorted[i]
+      end = sorted[i]
+    }
+  }
+  ranges.push([start, end])
+  return ranges
+}
+
 function buildEvent(
   course: CourseEntry,
   startDateStr: string,
@@ -79,48 +97,47 @@ function buildEvent(
   const weeks = parseWeeks(course.weeks)
   if (weeks.length === 0) return ''
 
-  // 第一周的该星期几的日期
-  const firstWeekDate = new Date(startDate)
-  firstWeekDate.setDate(startDate.getDate() + (course.dayOfWeek - 1))
-
-  // 最后一周的日期
-  const lastWeek = Math.max(...weeks)
-  const lastDate = new Date(startDate)
-  lastDate.setDate(startDate.getDate() + (lastWeek - 1) * 7 + (course.dayOfWeek - 1))
-
-  const dtStart = `${toIcsDate(firstWeekDate)}T${time.start}`
-  const dtEnd = `${toIcsDate(firstWeekDate)}T${endSectionTime.end}`
-  const until = `${toIcsDate(lastDate)}T235959`
-
-  // 不上课的周次作为 EXDATE
-  const allWeeks = Array.from({ length: lastWeek }, (_, i) => i + 1)
-  const offWeeks = allWeeks.filter(w => !weeks.includes(w))
-  const exdates = offWeeks.map(w => {
-    const d = new Date(startDate)
-    d.setDate(startDate.getDate() + (w - 1) * 7 + (course.dayOfWeek - 1))
-    return toIcsDate(d)
-  })
+  // 第一周的该星期几的日期（作为计算基准）
+  const baseDate = new Date(startDate)
+  baseDate.setDate(startDate.getDate() + (course.dayOfWeek - 1))
 
   const weeksDesc = weeksToRanges(weeks)
+  const ranges = getContiguousRanges(weeks)
+  const events: string[] = []
 
-  let vevent = [
-    'BEGIN:VEVENT',
-    `DTSTART;TZID=Asia/Shanghai:${dtStart}`,
-    `DTEND;TZID=Asia/Shanghai:${dtEnd}`,
-    `RRULE:FREQ=WEEKLY;UNTIL=${until};WKST=SU`,
-    `SUMMARY:${course.courseName}`,
-    `LOCATION:${course.location || ''}`,
-    `DESCRIPTION:教师: ${course.teacher || '未知'}\\n周次: ${weeksDesc} (${weeks.length}周)\\n节次: ${course.startSection}-${course.endSection}节\\n学期: ${semester}`,
-    `CATEGORIES:${semester}`,
-    `UID:course-${index}-${Date.now()}@campus-assistant`,
-  ]
+  for (let ri = 0; ri < ranges.length; ri++) {
+    const [rangeStart, rangeEnd] = ranges[ri]
+    const count = rangeEnd - rangeStart + 1
 
-  if (exdates.length > 0) {
-    vevent.push(`EXDATE;TZID=Asia/Shanghai:${exdates.join(',')}`)
+    // 该范围第一周的日期
+    const rangeStartDate = new Date(baseDate)
+    rangeStartDate.setDate(baseDate.getDate() + (rangeStart - 1) * 7)
+
+    const dtStart = `${toIcsDate(rangeStartDate)}T${time.start}`
+    const dtEnd = `${toIcsDate(rangeStartDate)}T${endSectionTime.end}`
+
+    const fields = [
+      'BEGIN:VEVENT',
+      `DTSTART;TZID=Asia/Shanghai:${dtStart}`,
+      `DTEND;TZID=Asia/Shanghai:${dtEnd}`,
+    ]
+
+    if (count > 1) {
+      fields.push(`RRULE:FREQ=WEEKLY;COUNT=${count};WKST=SU`)
+    }
+
+    fields.push(
+      `SUMMARY:${course.courseName}`,
+      `LOCATION:${course.location || ''}`,
+      `DESCRIPTION:教师: ${course.teacher || '未知'}\\n周次: ${weeksDesc} (${weeks.length}周)\\n节次: ${course.startSection}-${course.endSection}节\\n学期: ${semester}`,
+      `CATEGORIES:${semester}`,
+      `UID:course-${index}-${ri}-${Date.now()}@campus-assistant`,
+      'END:VEVENT',
+    )
+    events.push(fields.join('\r\n'))
   }
 
-  vevent.push('END:VEVENT')
-  return vevent.join('\r\n')
+  return events.join('\r\n')
 }
 
 export function generateICS(
