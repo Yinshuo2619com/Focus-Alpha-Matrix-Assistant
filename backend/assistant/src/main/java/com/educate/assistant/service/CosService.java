@@ -44,9 +44,9 @@ public class CosService {
     private record CachedFile(byte[] data, String contentType) {}
 
     private final Cache<String, CachedFile> fileCache = Caffeine.newBuilder()
-            .maximumWeight(50 * 1024 * 1024) // 50MB
+            .maximumWeight(200 * 1024 * 1024) // 200MB
             .weigher((String key, CachedFile value) -> value.data().length)
-            .expireAfterWrite(Duration.ofMinutes(10))
+            .expireAfterWrite(Duration.ofMinutes(30))
             .build();
 
     @PostConstruct

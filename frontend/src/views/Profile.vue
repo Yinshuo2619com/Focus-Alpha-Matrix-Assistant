@@ -91,6 +91,54 @@
 
           <el-divider />
 
+          <!-- 宿舍绑定 -->
+          <div class="dorm-section">
+            <h3 class="section-title">宿舍绑定</h3>
+
+            <div v-if="userStore.userInfo?.roomId" class="current-bind">
+              <span class="bind-label">当前绑定：</span>
+              <span class="bind-value">{{ userStore.userInfo.roomName }}</span>
+              <el-button type="danger" size="small" text :loading="unbindLoading" @click="handleUnbind">解绑</el-button>
+            </div>
+
+            <div class="bind-form">
+              <div class="bind-form-row">
+                <el-select
+                  v-model="bindForm.buiId"
+                  placeholder="选择楼栋"
+                  style="width: 180px"
+                  @change="onBuildingChange"
+                  filterable
+                >
+                  <el-option
+                    v-for="b in buildings"
+                    :key="b.buiId"
+                    :label="b.name"
+                    :value="b.buiId"
+                  />
+                </el-select>
+                <el-select
+                  v-model="bindForm.roomId"
+                  placeholder="选择房间"
+                  style="width: 180px"
+                  :disabled="!bindForm.buiId"
+                  :loading="roomsLoading"
+                  filterable
+                >
+                  <el-option
+                    v-for="r in rooms"
+                    :key="r.roomId"
+                    :label="r.roomName"
+                    :value="r.roomId"
+                  />
+                </el-select>
+                <el-button type="primary" :loading="bindLoading" :disabled="!bindForm.roomId" @click="handleBind">绑定</el-button>
+              </div>
+            </div>
+          </div>
+
+          <el-divider />
+
           <!-- 操作按钮 -->
           <div class="action-buttons">
             <el-button type="primary" @click="openEditDialog">编辑资料</el-button>
@@ -175,7 +223,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
@@ -186,6 +234,84 @@ import router from '@/router'
 import request from '@/utils/request'
 
 const userStore = useUserStore()
+
+// ========== 宿舍绑定 ==========
+const buildings = ref<{ buiId: number; name: string }[]>([])
+const rooms = ref<{ roomId: number; roomName: string }[]>([])
+const roomsLoading = ref(false)
+const bindLoading = ref(false)
+const unbindLoading = ref(false)
+const bindForm = reactive({ buiId: null as number | null, roomId: null as number | null })
+
+const fetchBuildings = async () => {
+  try {
+    const res: any = await request.get('/electricity/buildings')
+    if (res.code === 200) buildings.value = res.data || []
+  } catch { /* ignore */ }
+}
+
+const onBuildingChange = async () => {
+  bindForm.roomId = null
+  rooms.value = []
+  if (!bindForm.buiId) return
+  roomsLoading.value = true
+  try {
+    const res: any = await request.get('/electricity/rooms', { params: { buiId: bindForm.buiId } })
+    if (res.code === 200) rooms.value = res.data || []
+  } catch { /* ignore */ }
+  finally { roomsLoading.value = false }
+}
+
+const handleBind = async () => {
+  if (!bindForm.buiId || !bindForm.roomId) return
+  const room = rooms.value.find(r => r.roomId === bindForm.roomId)
+  if (!room) return
+  bindLoading.value = true
+  try {
+    const res: any = await request.post('/electricity/bind', {
+      roomId: bindForm.roomId,
+      buiId: bindForm.buiId,
+      roomName: room.roomName
+    })
+    if (res.code === 200) {
+      ElMessage.success('绑定成功')
+      showCharMsg('宿舍绑定成功！', 'success')
+      userStore.userInfo!.roomId = bindForm.roomId
+      userStore.userInfo!.buiId = bindForm.buiId
+      userStore.userInfo!.roomName = room.roomName
+      localStorage.setItem('userInfo', JSON.stringify(userStore.userInfo))
+      bindForm.buiId = null
+      bindForm.roomId = null
+      rooms.value = []
+    } else {
+      ElMessage.error(res.message || '绑定失败')
+    }
+  } catch { ElMessage.error('绑定失败') }
+  finally { bindLoading.value = false }
+}
+
+const handleUnbind = async () => {
+  try {
+    await ElMessageBox.confirm('确定解绑宿舍吗？解绑后将无法查看电费信息。', '确认解绑', {
+      confirmButtonText: '解绑',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    unbindLoading.value = true
+    const res: any = await request.delete('/electricity/bind')
+    if (res.code === 200) {
+      ElMessage.success('已解绑')
+      userStore.userInfo!.roomId = null
+      userStore.userInfo!.buiId = null
+      userStore.userInfo!.roomName = null
+      localStorage.setItem('userInfo', JSON.stringify(userStore.userInfo))
+    }
+  } catch (err: any) {
+    if (err !== 'cancel') ElMessage.error('解绑失败')
+  } finally { unbindLoading.value = false }
+}
+
+onMounted(fetchBuildings)
 
 // 人物对话框
 const characterMessage = ref('这里是你的个人中心，可以编辑资料和修改密码~')
@@ -577,6 +703,45 @@ const handleLogout = () => {
   display: flex;
   gap: 12px;
   justify-content: center;
+  flex-wrap: wrap;
+}
+
+.dorm-section {
+  padding: 10px 0;
+}
+
+.section-title {
+  margin: 0 0 16px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.current-bind {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  background: #f0f9eb;
+  border-radius: 8px;
+}
+
+.bind-label {
+  font-size: 14px;
+  color: #606266;
+}
+
+.bind-value {
+  font-size: 15px;
+  font-weight: 600;
+  color: #67c23a;
+}
+
+.bind-form-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
   flex-wrap: wrap;
 }
 

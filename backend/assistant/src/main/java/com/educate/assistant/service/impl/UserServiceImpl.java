@@ -59,6 +59,9 @@ public class UserServiceImpl implements UserService {
             u.setAvatar(rs.getString("avatar"));
             u.setBirthday(rs.getDate("birthday") != null ? rs.getDate("birthday").toLocalDate() : null);
             u.setGender(rs.getString("gender"));
+            try { u.setRoomId(rs.getObject("room_id") != null ? rs.getInt("room_id") : null); } catch (Exception ignored) {}
+            try { u.setBuiId(rs.getObject("bui_id") != null ? rs.getInt("bui_id") : null); } catch (Exception ignored) {}
+            try { u.setRoomName(rs.getString("room_name")); } catch (Exception ignored) {}
             return u;
         }, loginRequest.getUsername(), loginRequest.getUsername());
 
@@ -86,6 +89,9 @@ public class UserServiceImpl implements UserService {
         result.put("role", role);
         result.put("birthday", user.getBirthday());
         result.put("gender", user.getGender());
+        result.put("roomId", user.getRoomId());
+        result.put("buiId", user.getBuiId());
+        result.put("roomName", user.getRoomName());
 
         return result;
     }

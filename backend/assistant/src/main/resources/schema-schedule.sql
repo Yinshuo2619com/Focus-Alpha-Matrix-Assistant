@@ -49,3 +49,37 @@ CREATE TABLE IF NOT EXISTS `school_config` (
 -- 插入默认学校配置（请修改为实际的教务系统地址）
 INSERT IGNORE INTO `school_config` (`school_id`, `school_name`, `base_url`, `login_path`, `schedule_path`, `enabled`)
 VALUES ('default', '默认学校', 'https://jwxt.aqnu.edu.cn', '/student/login', '/student/for-std/course-table', 1);
+
+-- ========== 电费功能 ==========
+
+-- 用户表增加宿舍绑定字段
+ALTER TABLE `user` ADD COLUMN `room_id` INT DEFAULT NULL COMMENT '绑定的宿舍roomId';
+ALTER TABLE `user` ADD COLUMN `bui_id` INT DEFAULT NULL COMMENT '绑定的楼栋buiId';
+ALTER TABLE `user` ADD COLUMN `room_name` VARCHAR(50) DEFAULT NULL COMMENT '宿舍名(如6B-128)';
+
+-- 电费余额每日快照
+CREATE TABLE IF NOT EXISTS `electricity_balance` (
+    `id`            BIGINT       NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    `room_id`       INT          NOT NULL COMMENT '宿舍roomId',
+    `bui_id`        INT          NOT NULL COMMENT '楼栋buiId',
+    `room_name`     VARCHAR(50)  NOT NULL COMMENT '宿舍名',
+    `balance`       DECIMAL(10,2) NOT NULL COMMENT '当日余额(度)',
+    `consumption`   DECIMAL(10,2) DEFAULT NULL COMMENT '当日耗电(度)，首日为NULL',
+    `record_date`   DATE         NOT NULL COMMENT '记录日期',
+    `created_at`    DATETIME     DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_room_date` (`room_id`, `record_date`),
+    KEY `idx_bui_date` (`bui_id`, `record_date`),
+    KEY `idx_record_date` (`record_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='电费余额每日快照';
+
+-- 电费充值记录
+CREATE TABLE IF NOT EXISTS `electricity_recharge` (
+    `id`            BIGINT       NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    `room_id`       INT          NOT NULL COMMENT '宿舍roomId',
+    `record_date`   DATE         NOT NULL COMMENT '充值日期（与balance表对应）',
+    `amount`        DECIMAL(10,2) DEFAULT NULL COMMENT '充值金额（元）',
+    `kwh`           DECIMAL(10,2) NOT NULL COMMENT '充值度数',
+    `confirmed`     TINYINT      DEFAULT 0 COMMENT '0=自动检测待确认，1=用户已确认',
+    `created_at`    DATETIME     DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_room_date` (`room_id`, `record_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='电费充值记录';

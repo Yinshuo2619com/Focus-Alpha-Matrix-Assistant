@@ -10,91 +10,111 @@
       </div>
 
       <template v-else>
-        <!-- 左侧：消息通知 -->
-        <div class="column left-column">
-          <div class="column-header">
-            <h2>消息</h2>
-            <el-button
-              v-if="notifications.some((n: any) => !n.isRead)"
-              type="primary"
-              plain
-              size="small"
-              @click="handleMarkAllRead"
-            >
-              一键已读
-            </el-button>
+        <!-- 移动端 Tab 栏 -->
+        <div class="mobile-tabs">
+          <div class="mobile-tab" :class="{ active: mobileTab === 'messages' }" @click="mobileTab = 'messages'">
+            消息
+            <span v-if="unreadCount > 0" class="tab-badge">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
           </div>
-
-          <div v-if="notifications.length === 0" class="column-empty">
-            <el-empty description="暂无消息" :image-size="80" />
-          </div>
-
-          <div v-else class="item-list">
-            <div
-              v-for="(item, index) in notifications"
-              :key="index"
-              class="notification-item"
-              :class="{ unread: !item.isRead }"
-              @click="handleNotifClick(item)"
-            >
-              <div class="item-avatar">
-                <img :src="item.actors?.[0]?.avatar || '/default-avatar.png'" alt="头像" />
-                <span v-if="(item.actors?.length ?? 0) > 1" class="avatar-badge">+{{ item.actors!.length - 1 }}</span>
-              </div>
-              <div class="item-content">
-                <div class="item-text">
-                  <span class="actor-name">{{ item.actors?.[0]?.nickname }}</span>
-                  <template v-if="item.actors?.length === 2">
-                    、<span class="actor-name">{{ item.actors![1].nickname }}</span>
-                  </template>
-                  <template v-if="(item.actors?.length ?? 0) > 2">
-                    等{{ item.actors!.length }}人
-                  </template>
-                  <span class="action-text">{{ getActionText(item.type) }}</span>
-                  <template v-if="item.preview">
-                    <span class="preview-inline">「{{ item.preview }}」</span>
-                  </template>
-                </div>
-                <div class="item-time">{{ formatRelativeTime(item.latestTime) }}</div>
-              </div>
-            </div>
+          <div class="mobile-tab" :class="{ active: mobileTab === 'comments' }" @click="mobileTab = 'comments'">
+            我的评论
           </div>
         </div>
 
-        <!-- 右侧：我的评论 -->
-        <div class="column right-column">
-          <div class="column-header">
-            <h2>我的评论</h2>
-          </div>
-
-          <div v-if="comments.length === 0" class="column-empty">
-            <el-empty description="暂无评论" :image-size="80" />
-          </div>
-
-          <div v-else class="item-list">
-            <div
-              v-for="comment in comments"
-              :key="comment.id"
-              class="comment-item"
-              @click="handleCommentClick(comment)"
-            >
-              <div class="comment-content">{{ comment.content }}</div>
-              <div class="comment-meta">
-                <span class="comment-article">
-                  <el-icon><Document /></el-icon>
-                  {{ comment.recommendTitle || '已删除的文章' }}
-                </span>
-                <span class="comment-time">{{ formatRelativeTime(comment.createdAt) }}</span>
-              </div>
+        <div class="columns-wrapper">
+          <!-- 左侧：消息通知 -->
+          <div class="column left-column" :class="{ 'mobile-hide': mobileTab !== 'messages' }">
+            <div v-if="notifications.length > 0" class="column-header">
+              <h2>消息</h2>
               <el-button
-                class="delete-btn"
+                v-if="notifications.some((n: any) => !n.isRead)"
+                type="primary"
+                plain
                 size="small"
-                type="danger"
-                text
-                @click.stop="handleDeleteComment(comment)"
+                @click="handleMarkAllRead"
               >
-                <el-icon><Delete /></el-icon>
+                一键已读
               </el-button>
+            </div>
+
+            <div v-if="notifications.length === 0" class="column-empty">
+              <el-icon class="empty-icon"><ChatDotRound /></el-icon>
+              <p class="empty-text">暂无消息</p>
+            </div>
+
+            <div v-else class="item-list">
+              <div
+                v-for="(item, index) in notifications"
+                :key="index"
+                class="notification-item"
+                :class="{ unread: !item.isRead }"
+                @click="handleNotifClick(item)"
+              >
+                <div v-if="!item.isRead" class="unread-dot"></div>
+                <div class="item-avatar">
+                  <img :src="item.actors?.[0]?.avatar || '/default-avatar.png'" alt="头像" />
+                  <div class="type-icon" :class="'type-' + item.type">
+                    <el-icon v-if="item.type === 'COMMENT_REPLY'"><ChatDotRound /></el-icon>
+                    <el-icon v-else-if="item.type === 'COMMENT_LIKE'"><Star /></el-icon>
+                    <el-icon v-else-if="item.type === 'ARTICLE_FAVORITE'"><StarFilled /></el-icon>
+                  </div>
+                </div>
+                <div class="item-content">
+                  <div class="item-text">
+                    <span class="actor-name">{{ item.actors?.[0]?.nickname }}</span>
+                    <template v-if="item.actors?.length === 2">
+                      、<span class="actor-name">{{ item.actors![1].nickname }}</span>
+                    </template>
+                    <template v-if="(item.actors?.length ?? 0) > 2">
+                      等{{ item.actors!.length }}人
+                    </template>
+                    <span class="action-text">{{ getActionText(item.type) }}</span>
+                  </div>
+                  <div v-if="item.preview" class="item-preview">「{{ item.preview }}」</div>
+                  <div class="item-time">{{ formatRelativeTime(item.latestTime) }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 右侧：我的评论 -->
+          <div class="column right-column" :class="{ 'mobile-hide': mobileTab !== 'comments' }">
+            <div v-if="comments.length > 0" class="column-header">
+              <h2>我的评论</h2>
+            </div>
+
+            <div v-if="comments.length === 0" class="column-empty">
+              <el-icon class="empty-icon"><Document /></el-icon>
+              <p class="empty-text">暂无评论</p>
+            </div>
+
+            <div v-else class="item-list">
+              <div
+                v-for="comment in comments"
+                :key="comment.id"
+                class="comment-item"
+                @click="handleCommentClick(comment)"
+              >
+                <div class="comment-main">
+                  <div class="comment-content">{{ comment.content }}</div>
+                  <div class="comment-meta">
+                    <span class="comment-article">
+                      <el-icon><Document /></el-icon>
+                      {{ comment.recommendTitle || '已删除的文章' }}
+                    </span>
+                    <span class="comment-time">{{ formatRelativeTime(comment.createdAt) }}</span>
+                  </div>
+                </div>
+                <el-button
+                  class="delete-btn"
+                  size="small"
+                  type="danger"
+                  text
+                  @click.stop="handleDeleteComment(comment)"
+                >
+                  <el-icon><Delete /></el-icon>
+                </el-button>
+              </div>
             </div>
           </div>
         </div>
@@ -104,10 +124,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Loading, Document, Delete } from '@element-plus/icons-vue'
+import { Loading, Document, Delete, ChatDotRound, Star, StarFilled } from '@element-plus/icons-vue'
 import StatusBar from '@/components/StatusBar.vue'
 import { useNotification } from '@/composables/useNotification'
 import request from '@/utils/request'
@@ -141,8 +161,10 @@ interface MyComment {
 const router = useRouter()
 const { fetchUnreadCount } = useNotification()
 const loading = ref(false)
+const mobileTab = ref<'messages' | 'comments'>('messages')
 const notifications = ref<NotificationItem[]>([])
 const comments = ref<MyComment[]>([])
+const unreadCount = computed(() => notifications.value.filter(n => !n.isRead).length)
 
 const getActionText = (type: string) => {
   switch (type) {
@@ -263,6 +285,13 @@ onMounted(() => {
   max-width: 1000px;
   margin: 0 auto;
   padding: 20px;
+}
+
+.mobile-tabs {
+  display: none;
+}
+
+.columns-wrapper {
   display: flex;
   gap: 20px;
   align-items: flex-start;
@@ -291,7 +320,23 @@ onMounted(() => {
 }
 
 .column-empty {
-  padding: 40px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+
+  .empty-icon {
+    font-size: 48px;
+    color: #dcdfe6;
+    margin-bottom: 12px;
+  }
+
+  .empty-text {
+    font-size: 14px;
+    color: #c0c4cc;
+    margin: 0;
+  }
 }
 
 .item-list {
@@ -306,46 +351,74 @@ onMounted(() => {
   padding: 14px 20px;
   cursor: pointer;
   transition: background-color 0.2s;
-  border-bottom: 1px solid #f5f5f5;
+  border-bottom: 1px solid #f0f2f5;
+  position: relative;
 
   &:last-child {
     border-bottom: none;
   }
 
   &:hover {
-    background: #fafafa;
+    background: #fafbfc;
   }
 
   &.unread {
-    background: #f0f7ff;
+    background: #f8fbff;
 
     &:hover {
-      background: #e8f1fc;
+      background: #f0f5ff;
     }
   }
+}
+
+.unread-dot {
+  position: absolute;
+  top: 20px;
+  left: 8px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #409eff;
 }
 
 .item-avatar {
   position: relative;
   flex-shrink: 0;
+  margin-left: 6px;
 
   img {
-    width: 38px;
-    height: 38px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     object-fit: cover;
   }
 }
 
-.avatar-badge {
+.type-icon {
   position: absolute;
-  bottom: -2px;
-  right: -4px;
-  background: #909399;
-  color: white;
+  bottom: -3px;
+  right: -3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 10px;
-  padding: 1px 5px;
-  border-radius: 8px;
+  color: white;
+  border: 2px solid #fff;
+
+  &.type-COMMENT_REPLY {
+    background: #409eff;
+  }
+
+  &.type-COMMENT_LIKE {
+    background: #f7ba2a;
+  }
+
+  &.type-ARTICLE_FAVORITE {
+    background: #f56c6c;
+  }
 }
 
 .item-content {
@@ -354,54 +427,70 @@ onMounted(() => {
 }
 
 .item-text {
-  font-size: 13px;
+  font-size: 14px;
   color: #303133;
-  line-height: 1.5;
+  line-height: 1.6;
 }
 
 .actor-name {
   font-weight: 600;
-  color: #409eff;
+  color: #1a1a1a;
 }
 
 .action-text {
   color: #606266;
 }
 
-.preview-inline {
+.item-preview {
+  font-size: 13px;
   color: #909399;
-  font-size: 12px;
-  margin-left: 2px;
+  margin-top: 4px;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .item-time {
   font-size: 12px;
   color: #c0c4cc;
-  margin-top: 4px;
+  margin-top: 6px;
 }
 
 .comment-item {
-  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
   padding: 14px 20px;
   cursor: pointer;
   transition: background-color 0.2s;
-  border-bottom: 1px solid #f5f5f5;
+  border-bottom: 1px solid #f0f2f5;
 
   &:last-child {
     border-bottom: none;
   }
 
   &:hover {
-    background: #fafafa;
+    background: #fafbfc;
   }
 }
 
+.comment-main {
+  flex: 1;
+  min-width: 0;
+}
+
 .comment-content {
-  font-size: 13px;
+  font-size: 14px;
   color: #303133;
   line-height: 1.6;
   word-break: break-word;
   margin-bottom: 8px;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .comment-meta {
@@ -430,11 +519,10 @@ onMounted(() => {
 }
 
 .delete-btn {
-  position: absolute;
-  top: 10px;
-  right: 10px;
+  flex-shrink: 0;
   opacity: 0;
   transition: opacity 0.2s;
+  margin-top: 2px;
 }
 
 .comment-item:hover .delete-btn {
@@ -453,17 +541,91 @@ onMounted(() => {
 
 @media screen and (max-width: 768px) {
   .notifications-container {
-    flex-direction: column;
     padding: 12px;
   }
 
-  .notification-item,
+  .mobile-tabs {
+    display: flex;
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    margin-bottom: 12px;
+  }
+
+  .mobile-tab {
+    flex: 1;
+    text-align: center;
+    padding: 14px 0;
+    font-size: 15px;
+    color: #606266;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.2s;
+
+    &.active {
+      color: #409eff;
+      font-weight: 600;
+      background: #ecf5ff;
+    }
+  }
+
+  .tab-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    font-size: 11px;
+    font-weight: 600;
+    color: white;
+    background: #f56c6c;
+    border-radius: 10px;
+    margin-left: 4px;
+    vertical-align: middle;
+  }
+
+  .columns-wrapper {
+    flex-direction: column;
+  }
+
+  .mobile-hide {
+    display: none;
+  }
+
+  .column:has(.column-empty) {
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .column-empty {
+    padding: 80px 20px;
+
+    .empty-icon {
+      font-size: 56px;
+      color: #e4e7ed;
+    }
+  }
+
+  .notification-item {
+    padding: 12px 16px;
+  }
+
   .comment-item {
     padding: 12px 16px;
   }
 
   .delete-btn {
     opacity: 1;
+  }
+
+  .unread-dot {
+    left: 4px;
+  }
+
+  .item-avatar {
+    margin-left: 4px;
   }
 }
 </style>
