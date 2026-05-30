@@ -89,7 +89,7 @@ public class RecommendService {
 
     public Map<String, Object> getDetail(Long id) {
         // 增加浏览量
-        jdbcTemplate.update("UPDATE user_recommendation SET views = views + 1 WHERE id = ?", id);
+        jdbcTemplate.update("UPDATE user_recommendation SET views = views + 1, updated_at = updated_at WHERE id = ?", id);
 
         String sql = "SELECT r.*, u.nickname AS author_name, u.avatar AS author_avatar " +
                      "FROM user_recommendation r " +
@@ -106,10 +106,18 @@ public class RecommendService {
     public Long create(Long userId, RecommendationRequest request, String contentUrl) {
         int status = request.getStatus() != null ? request.getStatus() : 1;
         int type = request.getType() != null ? request.getType() : 0;
-        String sql = "INSERT INTO user_recommendation (user_id, title, summary, cover_url, content_url, views, likes, status, type) " +
-                     "VALUES (?, ?, ?, ?, ?, 0, 0, ?, ?)";
-        jdbcTemplate.update(sql, userId, request.getTitle(), request.getSummary(),
-                           request.getCoverUrl(), contentUrl, status, type);
+        // 工具类型：设置 updated_at 为未来时间，使其排在最前面
+        if (type == 1) {
+            String sql = "INSERT INTO user_recommendation (user_id, title, summary, cover_url, content_url, views, likes, status, type, updated_at) " +
+                         "VALUES (?, ?, ?, ?, ?, 0, 0, ?, ?, '2099-12-31 23:59:59')";
+            jdbcTemplate.update(sql, userId, request.getTitle(), request.getSummary(),
+                               request.getCoverUrl(), contentUrl, status, type);
+        } else {
+            String sql = "INSERT INTO user_recommendation (user_id, title, summary, cover_url, content_url, views, likes, status, type) " +
+                         "VALUES (?, ?, ?, ?, ?, 0, 0, ?, ?)";
+            jdbcTemplate.update(sql, userId, request.getTitle(), request.getSummary(),
+                               request.getCoverUrl(), contentUrl, status, type);
+        }
         return jdbcTemplate.queryForObject("SELECT LAST_INSERT_ID()", Long.class);
     }
 
@@ -179,11 +187,11 @@ public class RecommendService {
     }
 
     public void incrementLikes(Long id) {
-        jdbcTemplate.update("UPDATE user_recommendation SET likes = likes + 1 WHERE id = ?", id);
+        jdbcTemplate.update("UPDATE user_recommendation SET likes = likes + 1, updated_at = updated_at WHERE id = ?", id);
     }
 
     public void incrementViews(Long id) {
-        jdbcTemplate.update("UPDATE user_recommendation SET views = views + 1 WHERE id = ?", id);
+        jdbcTemplate.update("UPDATE user_recommendation SET views = views + 1, updated_at = updated_at WHERE id = ?", id);
     }
 
     public Long getUserIdByUsername(String username) {
@@ -193,7 +201,7 @@ public class RecommendService {
     public void addFavorite(Long userId, Long recommendId) {
         int inserted = jdbcTemplate.update("INSERT IGNORE INTO user_favorite (user_id, recommend_id) VALUES (?, ?)",
                 userId, recommendId);
-        jdbcTemplate.update("UPDATE user_recommendation SET favorites = favorites + 1 WHERE id = ?", recommendId);
+        jdbcTemplate.update("UPDATE user_recommendation SET favorites = favorites + 1, updated_at = updated_at WHERE id = ?", recommendId);
 
         if (inserted > 0) {
             List<Map<String, Object>> rows = jdbcTemplate.queryForList(
@@ -209,7 +217,7 @@ public class RecommendService {
         int rows = jdbcTemplate.update("DELETE FROM user_favorite WHERE user_id = ? AND recommend_id = ?",
                 userId, recommendId);
         if (rows > 0) {
-            jdbcTemplate.update("UPDATE user_recommendation SET favorites = GREATEST(favorites - 1, 0) WHERE id = ?", recommendId);
+            jdbcTemplate.update("UPDATE user_recommendation SET favorites = GREATEST(favorites - 1, 0), updated_at = updated_at WHERE id = ?", recommendId);
         }
     }
 

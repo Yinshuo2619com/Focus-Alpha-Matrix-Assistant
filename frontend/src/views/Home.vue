@@ -4,42 +4,46 @@
     <div class="status-bar-placeholder"></div>
 
     <div class="home-container">
-      <div class="schedule-section">
-        <div class="schedule-header">
-          <h3 class="schedule-title">我的课表</h3>
-          <div class="header-actions">
-            <el-button v-if="scheduleStore.hasSchedule" size="small" @click="handleShare">
-              <el-icon><Share /></el-icon>
-              分享课表
-            </el-button>
-            <el-button v-if="scheduleStore.hasSchedule" size="small" @click="handleRefresh" :loading="refreshing">
-              <el-icon><Refresh /></el-icon>
-              刷新课表
-            </el-button>
-            <el-button type="primary" size="small" @click="goToImport">
-              <el-icon><Plus /></el-icon>
-              打开课程表
-            </el-button>
+      <div class="main-content">
+        <div class="schedule-section">
+          <div class="schedule-header">
+            <h3 class="schedule-title">我的课表</h3>
+            <div class="header-actions">
+              <el-button v-if="scheduleStore.hasSchedule" size="small" @click="handleShare">
+                <el-icon><Share /></el-icon>
+                分享课表
+              </el-button>
+              <el-button v-if="scheduleStore.hasSchedule" size="small" @click="handleRefresh" :loading="refreshing">
+                <el-icon><Refresh /></el-icon>
+                刷新课表
+              </el-button>
+              <el-button type="primary" size="small" @click="goToImport">
+                <el-icon><Plus /></el-icon>
+                打开课程表
+              </el-button>
+            </div>
+          </div>
+
+          <div v-if="scheduleStore.loading" class="loading-wrapper">
+            <el-icon class="is-loading"><Loading /></el-icon>
+            <span>加载中...</span>
+          </div>
+
+          <ScheduleGrid
+            v-else-if="scheduleStore.hasSchedule"
+            :courses="scheduleStore.scheduleData.courses"
+            :semester="scheduleStore.scheduleData.schedule?.semester"
+            :start-date="scheduleStore.scheduleData.schedule?.startDate"
+          />
+
+          <div v-else class="empty-schedule">
+            <el-empty description="暂无课表数据">
+              <el-button type="primary" @click="goToImport">导入课表</el-button>
+            </el-empty>
           </div>
         </div>
 
-        <div v-if="scheduleStore.loading" class="loading-wrapper">
-          <el-icon class="is-loading"><Loading /></el-icon>
-          <span>加载中...</span>
-        </div>
-
-        <ScheduleGrid
-          v-else-if="scheduleStore.hasSchedule"
-          :courses="scheduleStore.scheduleData.courses"
-          :semester="scheduleStore.scheduleData.schedule?.semester"
-          :start-date="scheduleStore.scheduleData.schedule?.startDate"
-        />
-
-        <div v-else class="empty-schedule">
-          <el-empty description="暂无课表数据">
-            <el-button type="primary" @click="goToImport">导入课表</el-button>
-          </el-empty>
-        </div>
+        <ElectricityCard v-if="isLoggedIn" class="side-card" />
       </div>
     </div>
 
@@ -69,14 +73,18 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, computed } from 'vue'
 import { Plus, Loading, Refresh, Share } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import StatusBar from '@/components/StatusBar.vue'
 import ScheduleGrid from '@/components/ScheduleGrid.vue'
+import ElectricityCard from '@/components/ElectricityCard.vue'
 import { useScheduleStore } from '@/stores/schedule'
+import { useUserStore } from '@/stores/user'
 
 const scheduleStore = useScheduleStore()
+const userStore = useUserStore()
+const isLoggedIn = computed(() => !!userStore.token)
 const refreshing = ref(false)
 const shareDialogVisible = ref(false)
 const shareUrl = ref('')
@@ -145,10 +153,23 @@ const handleRefresh = async () => {
 .home-container {
   width: 100%;
   padding: 20px;
-  max-width: 900px;
+  max-width: 1200px;
   margin: 0 auto;
   flex: 1;
   box-sizing: border-box;
+}
+
+.main-content {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.side-card {
+  width: 280px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 80px;
 }
 
 .schedule-section {
@@ -156,6 +177,8 @@ const handleRefresh = async () => {
   border-radius: 12px;
   padding: 20px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  flex: 1;
+  min-width: 0;
 }
 
 .schedule-header {
@@ -228,5 +251,24 @@ const handleRefresh = async () => {
 
 .share-link-box {
   margin-top: 8px;
+}
+
+@media screen and (max-width: 768px) {
+  .home-container {
+    padding: 12px;
+  }
+
+  .main-content {
+    flex-direction: column;
+  }
+
+  .side-card {
+    width: 100%;
+    position: static;
+  }
+
+  .header-actions {
+    flex-wrap: wrap;
+  }
 }
 </style>

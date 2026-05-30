@@ -7,8 +7,8 @@ import java.time.LocalDateTime;
 
 @Data
 @TableName("user")
-public class User{
-    @TableId(type = IdType.AUTO) //主键，自增
+public class User {
+    @TableId(type = IdType.AUTO)
     private Long id;
 
     private String username;
@@ -18,14 +18,15 @@ public class User{
     private LocalDate birthday;
     private String gender;
     private Integer status;
-private String avatar;
-private String phone;
+    private String avatar;
+    private String phone;
+    private Integer roomId;
+    private Integer buiId;
+    private String roomName;
 
-    @TableField(fill = FieldFill.INSERT) //新增时自动填入时间
+    @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createdAt;
 
-    @TableField(fill = FieldFill.INSERT_UPDATE) //新增和更新时自动填入时间
+    @TableField(fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updatedAt;
-
-   
 }

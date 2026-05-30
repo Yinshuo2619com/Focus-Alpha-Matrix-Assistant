@@ -13,6 +13,9 @@ interface UserInfo {
   birthday?: string | null
   gender?: string
   createdAt?: string
+  roomId?: number | null
+  buiId?: number | null
+  roomName?: string | null
 }
 
 export const useUserStore = defineStore('user', () => {
@@ -39,7 +42,10 @@ export const useUserStore = defineStore('user', () => {
         email: res.data.email || '',
         phone: res.data.phone || '',
         birthday: res.data.birthday || null,
-        gender: res.data.gender || ''
+        gender: res.data.gender || '',
+        roomId: res.data.roomId ?? null,
+        buiId: res.data.buiId ?? null,
+        roomName: res.data.roomName ?? null
       }
       localStorage.setItem('userInfo', JSON.stringify(userInfo.value))
     }

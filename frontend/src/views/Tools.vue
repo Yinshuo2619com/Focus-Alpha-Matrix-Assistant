@@ -33,10 +33,16 @@
               </el-button-group>
             </template>
           </div>
-          <el-button v-if="isAdmin" type="primary" @click="$router.push('/tool/new')">
-            <el-icon><Plus /></el-icon>
-            发布工具
-          </el-button>
+          <div class="header-right">
+            <el-button v-if="isAdmin && toolViewMode === 'all' && !editMode" @click="enterEditMode">
+              <el-icon><Rank /></el-icon>
+              调整排序
+            </el-button>
+            <el-button v-if="isAdmin" type="primary" @click="$router.push('/tool/new')">
+              <el-icon><Plus /></el-icon>
+              发布工具
+            </el-button>
+          </div>
         </div>
 
         <div v-if="toolsLoading" class="loading-wrapper">
@@ -50,18 +56,49 @@
           </el-empty>
         </div>
 
+        <!-- 编辑排序模式 -->
+        <div v-else-if="editMode" class="edit-mode-wrapper">
+          <div class="edit-mode-bar">
+            <span class="edit-mode-hint">拖动卡片调整顺序</span>
+            <div class="edit-mode-actions">
+              <el-button @click="cancelEdit">取消</el-button>
+              <el-button type="primary" @click="saveOrder" :loading="savingOrder">保存排序</el-button>
+            </div>
+          </div>
+          <draggable
+            v-model="editTools"
+            item-key="id"
+            class="recommend-grid"
+            ghost-class="drag-ghost"
+            chosen-class="drag-chosen"
+            animation="200"
+          >
+            <template #item="{ element }">
+              <div class="recommend-card edit-card">
+                <div class="drag-handle">
+                  <el-icon><Rank /></el-icon>
+                </div>
+                <div v-if="element.coverUrl" class="card-cover">
+                  <img :src="element.coverUrl" alt="封面" loading="lazy" />
+                </div>
+                <div class="card-body">
+                  <h3 class="card-title">
+                    {{ element.title }}
+                    <el-icon v-if="isRedirectCard(element)" class="external-link-icon"><Link /></el-icon>
+                  </h3>
+                  <p class="card-summary">{{ element.summary || '暂无简介' }}</p>
+                </div>
+              </div>
+            </template>
+          </draggable>
+        </div>
+
+        <!-- 普通模式 -->
         <div v-else class="recommend-grid">
           <div
             v-for="item in tools"
             :key="item.id"
             class="recommend-card"
-            :class="{ dragging: draggingId === item.id, 'drag-over': dragOverId === item.id && draggingId !== item.id }"
-            :draggable="isAdmin && toolViewMode === 'all'"
-            @dragstart="handleDragStart($event, item.id)"
-            @dragover="handleDragOver($event, item.id)"
-            @dragleave="handleDragLeave"
-            @drop="handleDrop($event, item.id)"
-            @dragend="handleDragEnd"
             @click="handleCardClick(item)"
           >
             <div v-if="isAdmin && toolViewMode !== 'all'" class="card-badges">
@@ -71,7 +108,7 @@
               <div v-if="toolViewMode === 'drafts'" class="draft-badge">草稿</div>
             </div>
             <div v-if="item.coverUrl" class="card-cover">
-              <img :src="item.coverUrl" alt="封面" />
+              <img :src="item.coverUrl" alt="封面" loading="lazy" />
             </div>
             <div class="card-body">
               <h3 class="card-title">
@@ -168,9 +205,10 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Loading, Lock, View, Star, Delete, Link } from '@element-plus/icons-vue'
+import { Plus, Loading, Lock, View, Star, Delete, Link, Rank } from '@element-plus/icons-vue'
 import StatusBar from '@/components/StatusBar.vue'
 import request from '@/utils/request'
+import draggable from 'vuedraggable'
 
 interface Recommendation {
   id: number
@@ -205,8 +243,9 @@ const toolsLoading = ref(false)
 type ToolViewMode = 'all' | 'mine' | 'drafts'
 const toolViewMode = ref<ToolViewMode>('all')
 const tools = ref<Recommendation[]>([])
-const draggingId = ref<number | null>(null)
-const dragOverId = ref<number | null>(null)
+const editMode = ref(false)
+const editTools = ref<Recommendation[]>([]) // 编辑模式下的副本
+const savingOrder = ref(false)
 
 const toolUrlMap: Record<ToolViewMode, string> = {
   all: '/tools',
@@ -244,45 +283,29 @@ const handleDeleteTool = async (id: number) => {
   }
 }
 
-const handleDragStart = (e: DragEvent, id: number) => {
-  draggingId.value = id
-  e.dataTransfer!.effectAllowed = 'move'
+const enterEditMode = () => {
+  editTools.value = [...tools.value]
+  editMode.value = true
 }
 
-const handleDragOver = (e: DragEvent, id: number) => {
-  e.preventDefault()
-  e.dataTransfer!.dropEffect = 'move'
-  dragOverId.value = id
+const cancelEdit = () => {
+  editMode.value = false
+  editTools.value = []
 }
 
-const handleDragLeave = () => {
-  dragOverId.value = null
-}
-
-const handleDrop = async (e: DragEvent, targetId: number) => {
-  e.preventDefault()
-  dragOverId.value = null
-  const sourceId = draggingId.value
-  if (sourceId === null || sourceId === targetId) return
-
-  const sourceIdx = tools.value.findIndex(t => t.id === sourceId)
-  const targetIdx = tools.value.findIndex(t => t.id === targetId)
-  if (sourceIdx === -1 || targetIdx === -1) return
-
-  const item = tools.value.splice(sourceIdx, 1)[0]
-  tools.value.splice(targetIdx, 0, item)
-  draggingId.value = null
-
+const saveOrder = async () => {
+  savingOrder.value = true
   try {
-    await request.put('/tools/reorder', tools.value.map(t => t.id))
+    await request.put('/tools/reorder', editTools.value.map(t => t.id))
+    tools.value = [...editTools.value]
+    editMode.value = false
+    editTools.value = []
+    ElMessage.success('排序已保存')
   } catch {
     ElMessage.error('排序保存失败')
+  } finally {
+    savingOrder.value = false
   }
-}
-
-const handleDragEnd = () => {
-  draggingId.value = null
-  dragOverId.value = null
 }
 
 const isRedirectCard = (item: Recommendation) => item.status === 2
@@ -482,6 +505,11 @@ onMounted(() => {
   margin-bottom: 20px;
 }
 
+.header-right {
+  display: flex;
+  gap: 8px;
+}
+
 .loading-wrapper {
   display: flex;
   align-items: center;
@@ -515,16 +543,66 @@ onMounted(() => {
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
     transform: translateY(-2px);
   }
+}
 
-  &.dragging {
-    opacity: 0.4;
-    transform: scale(0.98);
-  }
+.edit-mode-wrapper {
+  margin-top: 4px;
+}
 
-  &.drag-over {
-    border-color: #409eff;
-    box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.3);
+.edit-mode-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: #ecf5ff;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.edit-mode-hint {
+  font-size: 14px;
+  color: #409eff;
+  font-weight: 500;
+}
+
+.edit-mode-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.drag-ghost {
+  opacity: 0.4;
+  transform: scale(0.98);
+}
+
+.drag-chosen {
+  box-shadow: 0 4px 20px rgba(64, 158, 255, 0.3);
+  border-color: #409eff;
+}
+
+.edit-card {
+  cursor: grab;
+  position: relative;
+
+  &:active {
+    cursor: grabbing;
   }
+}
+
+.drag-handle {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 32px;
+  height: 32px;
+  background: rgba(64, 158, 255, 0.1);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #409eff;
+  font-size: 18px;
+  z-index: 2;
 }
 
 .card-badges {
@@ -661,7 +739,8 @@ onMounted(() => {
   }
 
   .card-cover {
-    height: 120px;
+    height: auto;
+    aspect-ratio: 16 / 9;
   }
 }
 </style>

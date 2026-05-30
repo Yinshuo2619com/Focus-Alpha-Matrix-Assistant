@@ -85,6 +85,11 @@ const router = createRouter({
       path: '/tool/:id/edit',
       name: 'ToolEdit',
       component: () => import('@/views/RecommendEditor.vue')
+    },
+    {
+      path: '/electricity',
+      name: 'Electricity',
+      component: () => import('@/views/ElectricityDetail.vue')
     }
   ]
 })
