@@ -27,11 +27,12 @@ public class ElectricityTask {
         try {
             List<Integer> collectedBuiIds = electricityService.collectAll();
 
-            // 采集完成后，为每个楼栋预计算排行榜
+            // 采集完成后，为每个楼栋预计算排行榜（today + yesterday）
             LocalDate today = LocalDate.now();
             for (int buiId : collectedBuiIds) {
                 try {
                     electricityService.computeAndCacheRanking(buiId, today);
+                    electricityService.computeAndCacheRanking(buiId, today.minusDays(1));
                 } catch (Exception e) {
                     log.error("楼栋 {} 排行榜预计算失败: {}", buiId, e.getMessage());
                 }

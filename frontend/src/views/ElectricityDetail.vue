@@ -11,6 +11,9 @@
         </el-button>
         <h2 class="page-title">电费详情</h2>
         <span v-if="history.roomName" class="room-badge">{{ history.roomName }}</span>
+        <el-button v-if="isAdmin" class="collect-btn" type="warning" plain size="small" :loading="collecting" @click="handleCollect">
+          手动采集
+        </el-button>
       </div>
 
       <div v-if="loading" class="loading-wrapper">
@@ -135,10 +138,14 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { ArrowLeft, Loading } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import StatusBar from '@/components/StatusBar.vue'
+import { useUserStore } from '@/stores/user'
 import request from '@/utils/request'
 import * as echarts from 'echarts'
+
+const userStore = useUserStore()
+const isAdmin = computed(() => userStore.userInfo?.username === 'admin' || userStore.userInfo?.role === 'admin')
 
 const loading = ref(true)
 const days = ref(7)
@@ -165,6 +172,7 @@ const rechargeForm = ref({
 
 const ranking = ref<any>(null)
 const rankingType = ref('top')
+const collecting = ref(false)
 const isInRankingList = computed(() => {
   if (!ranking.value?.list || !history.value.roomName) return false
   return ranking.value.list.some((item: any) => item.room_name === history.value.roomName)
@@ -199,6 +207,31 @@ const fetchRanking = async (type: string) => {
 const switchRanking = (type: string) => {
   rankingType.value = type
   fetchRanking(type)
+}
+
+const handleCollect = async () => {
+  try {
+    await ElMessageBox.confirm(
+      '将采集所有楼栋的最新电费数据并更新排行榜，确认执行？',
+      '手动采集',
+      { confirmButtonText: '确认采集', cancelButtonText: '取消', type: 'warning' }
+    )
+  } catch {
+    return
+  }
+  collecting.value = true
+  try {
+    const res: any = await request.post('/electricity/collect')
+    if (res.code === 200) {
+      ElMessage.success('采集任务已触发，请稍后刷新页面查看结果')
+    } else {
+      ElMessage.error(res.message || '触发采集失败')
+    }
+  } catch (err: any) {
+    ElMessage.error(err.message || '触发采集失败')
+  } finally {
+    collecting.value = false
+  }
 }
 
 const fetchHistory = async () => {
@@ -247,21 +280,12 @@ const renderChart = () => {
   const rechargeMap = new Map(rechargeData.map(function(r: any) { return [r.record_date, r] }))
 
   // 对齐到完整日期轴
-  // 消耗数据日期前移一天：29号采集的consumption是28→29的消耗，应显示在28号
   const consumptionValues = dates.map(function(d: string) {
-    // 将日期+1天，去查采集日的数据
-    var nextDay = new Date(d)
-    nextDay.setDate(nextDay.getDate() + 1)
-    var nextDayStr = nextDay.getFullYear() + '-' + String(nextDay.getMonth() + 1).padStart(2, '0') + '-' + String(nextDay.getDate()).padStart(2, '0')
-    var r = personalMap.get(nextDayStr)
+    var r = personalMap.get(d)
     return r && r.consumption != null ? Number(r.consumption) : null
   })
-  // 楼栋平均同样前移一天
   const buildingValues = dates.map(function(d: string) {
-    var nextDay = new Date(d)
-    nextDay.setDate(nextDay.getDate() + 1)
-    var nextDayStr = nextDay.getFullYear() + '-' + String(nextDay.getMonth() + 1).padStart(2, '0') + '-' + String(nextDay.getDate()).padStart(2, '0')
-    return buildingMap.get(nextDayStr) ?? null
+    return buildingMap.get(d) ?? null
   })
 
   // 余额线：数据库数据 + 今日实时余额（融入同一条线）
@@ -284,14 +308,11 @@ const renderChart = () => {
     })
   }
 
-  // 充值标记数据（同样前移一天）
+  // 充值标记数据
   const rechargeMarkers = dates.map(function(d: string) {
-    var nextDay = new Date(d)
-    nextDay.setDate(nextDay.getDate() + 1)
-    var nextDayStr = nextDay.getFullYear() + '-' + String(nextDay.getMonth() + 1).padStart(2, '0') + '-' + String(nextDay.getDate()).padStart(2, '0')
-    const r = rechargeMap.get(nextDayStr)
+    const r = rechargeMap.get(d)
     if (r) {
-      const consumption = personalMap.get(nextDayStr)
+      const consumption = personalMap.get(d)
       const val = consumption && consumption.consumption != null ? Number(consumption.consumption) : 0
       return {
         value: val,
@@ -320,11 +341,7 @@ const renderChart = () => {
           }
         })
         if (fullDate) {
-          // 充值数据前移一天，需要+1天查rechargeMap
-          var fd = new Date(fullDate)
-          fd.setDate(fd.getDate() + 1)
-          var shiftedDate = fd.getFullYear() + '-' + String(fd.getMonth() + 1).padStart(2, '0') + '-' + String(fd.getDate()).padStart(2, '0')
-          var r: any = rechargeMap.get(shiftedDate)
+          var r: any = rechargeMap.get(fullDate)
           if (r) {
             var status = r.confirmed ? '' : ' (待确认)'
             html += '<div style="color:#e6a23c">⚡ 充值: ' + r.kwh + ' 度' + status + '</div>'
@@ -523,6 +540,10 @@ onUnmounted(() => {
   border-radius: 12px;
   font-size: 13px;
   font-weight: 500;
+}
+
+.collect-btn {
+  margin-left: auto;
 }
 
 .loading-wrapper {
