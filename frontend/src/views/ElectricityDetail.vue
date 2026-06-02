@@ -143,6 +143,17 @@ import StatusBar from '@/components/StatusBar.vue'
 import { useUserStore } from '@/stores/user'
 import request from '@/utils/request'
 import * as echarts from 'echarts'
+import { useThemeStore } from '@/stores/theme'
+
+const themeStore = useThemeStore()
+
+function accentRgba(alpha: number) {
+  const hex = themeStore.config.theme.color
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return `rgba(${r},${g},${b},${alpha})`
+}
 
 const userStore = useUserStore()
 const isAdmin = computed(() => userStore.userInfo?.username === 'admin' || userStore.userInfo?.role === 'admin')
@@ -383,8 +394,8 @@ const renderChart = () => {
         bottom: 8,
         borderColor: 'transparent',
         backgroundColor: '#f5f7fa',
-        fillerColor: 'rgba(64,158,255,0.15)',
-        handleStyle: { color: '#409eff' }
+        fillerColor: accentRgba(0.15),
+        handleStyle: { color: themeStore.config.theme.color }
       }
     ] : undefined,
     yAxis: [
@@ -392,8 +403,8 @@ const renderChart = () => {
         type: 'value',
         name: '耗电(度)',
         position: 'left',
-        axisLabel: { fontSize: 11, color: '#409eff' },
-        nameTextStyle: { color: '#409eff' }
+        axisLabel: { fontSize: 11, color: themeStore.config.theme.color },
+        nameTextStyle: { color: themeStore.config.theme.color }
       },
       {
         type: 'value',
@@ -413,9 +424,9 @@ const renderChart = () => {
         smooth: true,
         symbol: 'circle',
         symbolSize: 6,
-        lineStyle: { width: 2, color: '#409eff' },
-        itemStyle: { color: '#409eff' },
-        areaStyle: { color: 'rgba(64,158,255,0.1)' },
+        lineStyle: { width: 2, color: themeStore.config.theme.color },
+        itemStyle: { color: themeStore.config.theme.color },
+        areaStyle: { color: accentRgba(0.1) },
         connectNulls: true
       },
       {
@@ -503,7 +514,7 @@ onUnmounted(() => {
 <style scoped lang="scss">
 .electricity-page {
   min-height: 100vh;
-  background: #f5f7fa;
+  background: var(--page-bg);
 }
 
 .status-bar-placeholder {
@@ -530,12 +541,12 @@ onUnmounted(() => {
 .page-title {
   margin: 0;
   font-size: 20px;
-  color: #303133;
+  color: var(--text-primary);
 }
 
 .room-badge {
-  background: #ecf5ff;
-  color: #409eff;
+  background: var(--accent-light);
+  color: var(--accent);
   padding: 4px 12px;
   border-radius: 12px;
   font-size: 13px;
@@ -552,7 +563,7 @@ onUnmounted(() => {
   justify-content: center;
   gap: 8px;
   padding: 80px 0;
-  color: #909399;
+  color: var(--text-secondary);
 }
 
 .stats-row {
@@ -563,36 +574,36 @@ onUnmounted(() => {
 }
 
 .stat-card {
-  background: white;
+  background: var(--card-bg);
   border-radius: 10px;
   padding: 16px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--card-shadow);
   text-align: center;
 }
 
 .stat-label {
   font-size: 12px;
-  color: #909399;
+  color: var(--text-secondary);
   margin-bottom: 6px;
 }
 
 .stat-value {
   font-size: 20px;
   font-weight: 600;
-  color: #303133;
+  color: var(--text-primary);
 
   .unit {
     font-size: 12px;
     font-weight: 400;
-    color: #909399;
+    color: var(--text-secondary);
   }
 
   &.personal {
-    color: #409eff;
+    color: var(--accent);
   }
 
   &.building {
-    color: #909399;
+    color: var(--text-secondary);
   }
 
   &.balance {
@@ -605,10 +616,10 @@ onUnmounted(() => {
 }
 
 .chart-wrapper {
-  background: white;
+  background: var(--card-bg);
   border-radius: 12px;
   padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--card-shadow);
   margin-bottom: 20px;
 }
 
@@ -618,16 +629,16 @@ onUnmounted(() => {
 }
 
 .recharge-section {
-  background: white;
+  background: var(--card-bg);
   border-radius: 12px;
   padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--card-shadow);
 }
 
 .section-title {
   margin: 0 0 16px 0;
   font-size: 16px;
-  color: #303133;
+  color: var(--text-primary);
 }
 
 .recharge-list {
@@ -641,7 +652,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 16px;
   padding: 12px;
-  background: #f5f7fa;
+  background: var(--page-bg);
   border-radius: 8px;
 
   &.unconfirmed {
@@ -652,14 +663,14 @@ onUnmounted(() => {
 
 .recharge-date {
   font-size: 14px;
-  color: #606266;
+  color: var(--text-regular);
   min-width: 100px;
 }
 
 .recharge-info {
   flex: 1;
   font-size: 14px;
-  color: #303133;
+  color: var(--text-primary);
 }
 
 .unconfirmed-text {
@@ -667,10 +678,10 @@ onUnmounted(() => {
 }
 
 .ranking-section {
-  background: white;
+  background: var(--card-bg);
   border-radius: 12px;
   padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--card-shadow);
   margin-bottom: 20px;
 }
 
@@ -691,7 +702,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   padding: 10px 12px;
-  background: #f5f7fa;
+  background: var(--page-bg);
   border-radius: 8px;
   gap: 12px;
 
@@ -723,20 +734,20 @@ onUnmounted(() => {
   }
 
   &.rank-3 {
-    background: #409eff;
+    background: var(--accent);
   }
 }
 
 .room-name {
   flex: 1;
   font-size: 14px;
-  color: #303133;
+  color: var(--text-primary);
   font-weight: 500;
 }
 
 .consumption {
   font-size: 14px;
-  color: #303133;
+  color: var(--text-primary);
   font-weight: 600;
 }
 
@@ -749,7 +760,7 @@ onUnmounted(() => {
 
 .ranking-empty {
   text-align: center;
-  color: #909399;
+  color: var(--text-secondary);
   font-size: 14px;
   padding: 20px 0;
 }
@@ -762,7 +773,7 @@ onUnmounted(() => {
       display: block;
       margin-bottom: 8px;
       font-size: 14px;
-      color: #606266;
+      color: var(--text-regular);
     }
   }
 }

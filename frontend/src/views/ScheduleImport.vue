@@ -231,7 +231,7 @@ const handleSave = async () => {
 <style scoped>
 .import-page {
   min-height: 100vh;
-  background: #f5f7fa;
+  background: var(--page-bg);
 }
 
 .import-header {
@@ -240,7 +240,7 @@ const handleSave = async () => {
   left: 0;
   right: 0;
   height: 60px;
-  background: white;
+  background: var(--card-bg);
   display: flex;
   align-items: center;
   padding: 0 20px;
@@ -261,7 +261,7 @@ const handleSave = async () => {
 }
 
 .status-hint.loading {
-  color: #909399;
+  color: var(--text-secondary);
 }
 
 .semester-input {
@@ -270,7 +270,7 @@ const handleSave = async () => {
   left: 0;
   right: 0;
   height: 50px;
-  background: white;
+  background: var(--card-bg);
   display: flex;
   align-items: center;
   padding: 0 20px;
@@ -291,7 +291,7 @@ const handleSave = async () => {
   left: 0;
   right: 0;
   height: 64px;
-  background: white;
+  background: var(--card-bg);
   display: flex;
   align-items: center;
   justify-content: center;

@@ -591,7 +591,7 @@ const handleLogout = () => {
 <style scoped lang="scss">
 .profile-page {
   min-height: 100vh;
-  background-color: #f5f7fa;
+  background-color: var(--page-bg);
 }
 
 .profile-wrapper {
@@ -642,7 +642,7 @@ const handleLogout = () => {
   height: 120px;
   border-radius: 50%;
   object-fit: cover;
-  border: 3px solid #ebeef5;
+  border: 3px solid var(--card-border);
 }
 
 .avatar-uploader {
@@ -689,7 +689,7 @@ const handleLogout = () => {
 
 .upload-hint {
   margin-top: 20px;
-  color: #909399;
+  color: var(--text-secondary);
   font-size: 12px;
   line-height: 1.8;
 }
@@ -714,7 +714,7 @@ const handleLogout = () => {
   margin: 0 0 16px;
   font-size: 16px;
   font-weight: 600;
-  color: #303133;
+  color: var(--text-primary);
 }
 
 .current-bind {
@@ -729,7 +729,7 @@ const handleLogout = () => {
 
 .bind-label {
   font-size: 14px;
-  color: #606266;
+  color: var(--text-regular);
 }
 
 .bind-value {

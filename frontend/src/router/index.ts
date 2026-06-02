@@ -90,6 +90,11 @@ const router = createRouter({
       path: '/electricity',
       name: 'Electricity',
       component: () => import('@/views/ElectricityDetail.vue')
+    },
+    {
+      path: '/customize',
+      name: 'Customize',
+      component: () => import('@/views/Customize.vue')
     }
   ]
 })

@@ -363,7 +363,7 @@ watch(() => route.params.id, (newId) => {
 <style scoped lang="scss">
 .editor-page {
   min-height: 100vh;
-  background: #f5f7fa;
+  background: var(--page-bg);
 }
 
 .status-bar-placeholder {
@@ -385,7 +385,7 @@ watch(() => route.params.id, (newId) => {
   h2 {
     margin: 0;
     font-size: 18px;
-    color: #303133;
+    color: var(--text-primary);
   }
 }
 
@@ -395,11 +395,11 @@ watch(() => route.params.id, (newId) => {
 }
 
 .meta-section {
-  background: white;
+  background: var(--card-bg);
   border-radius: 12px;
   padding: 20px;
   margin-bottom: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--card-shadow);
 }
 
 .meta-row {
@@ -418,7 +418,7 @@ watch(() => route.params.id, (newId) => {
   label {
     display: block;
     font-size: 14px;
-    color: #606266;
+    color: var(--text-regular);
     margin-bottom: 6px;
     font-weight: 500;
 
@@ -469,13 +469,13 @@ watch(() => route.params.id, (newId) => {
     align-items: center;
     justify-content: center;
     gap: 4px;
-    color: #909399;
+    color: var(--text-secondary);
     cursor: pointer;
     transition: border-color 0.2s;
 
     &:hover {
-      border-color: #409eff;
-      color: #409eff;
+      border-color: var(--accent);
+      color: var(--accent);
     }
 
     .el-icon {
@@ -496,7 +496,7 @@ watch(() => route.params.id, (newId) => {
 
 .redirect-hint {
   font-size: 13px;
-  color: #909399;
+  color: var(--text-secondary);
 }
 
 .redirect-url-body {
@@ -508,7 +508,7 @@ watch(() => route.params.id, (newId) => {
   label {
     display: block;
     font-size: 14px;
-    color: #606266;
+    color: var(--text-regular);
     margin-bottom: 6px;
     font-weight: 500;
 
@@ -521,10 +521,10 @@ watch(() => route.params.id, (newId) => {
 .editor-body {
   display: flex;
   gap: 0;
-  background: white;
+  background: var(--card-bg);
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--card-shadow);
   height: 60vh;
 }
 
@@ -543,7 +543,7 @@ watch(() => route.params.id, (newId) => {
   padding: 10px 16px;
   font-size: 13px;
   font-weight: 600;
-  color: #606266;
+  color: var(--text-regular);
   background: #fafafa;
   border-bottom: 1px solid #ebeef5;
   display: flex;
@@ -566,8 +566,8 @@ watch(() => route.params.id, (newId) => {
   font-size: 14px;
   font-family: 'Courier New', Consolas, monospace;
   line-height: 1.6;
-  color: #303133;
-  background: #fff;
+  color: var(--text-primary);
+  background: var(--card-bg);
 }
 
 .md-preview {
@@ -576,7 +576,7 @@ watch(() => route.params.id, (newId) => {
   overflow-y: auto;
   font-size: 14px;
   line-height: 1.8;
-  color: #303133;
+  color: var(--text-primary);
 
   :deep(h1), :deep(h2), :deep(h3) {
     margin: 16px 0 8px;
@@ -592,7 +592,7 @@ watch(() => route.params.id, (newId) => {
   }
 
   :deep(code) {
-    background: #f5f7fa;
+    background: var(--page-bg);
     padding: 2px 6px;
     border-radius: 4px;
     font-size: 13px;
@@ -600,7 +600,7 @@ watch(() => route.params.id, (newId) => {
   }
 
   :deep(pre) {
-    background: #f5f7fa;
+    background: var(--page-bg);
     padding: 12px;
     border-radius: 8px;
     overflow-x: auto;
@@ -612,10 +612,10 @@ watch(() => route.params.id, (newId) => {
   }
 
   :deep(blockquote) {
-    border-left: 4px solid #409eff;
+    border-left: 4px solid var(--accent);
     padding-left: 12px;
     margin: 8px 0;
-    color: #606266;
+    color: var(--text-regular);
   }
 
   :deep(ul), :deep(ol) {
@@ -634,13 +634,13 @@ watch(() => route.params.id, (newId) => {
     margin: 8px 0;
 
     th, td {
-      border: 1px solid #ebeef5;
+      border: var(--card-border);
       padding: 8px 12px;
       text-align: left;
     }
 
     th {
-      background: #f5f7fa;
+      background: var(--page-bg);
       font-weight: 600;
     }
   }

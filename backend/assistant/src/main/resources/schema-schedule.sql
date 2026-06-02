@@ -83,3 +83,15 @@ CREATE TABLE IF NOT EXISTS `electricity_recharge` (
     `created_at`    DATETIME     DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY `uk_room_date` (`room_id`, `record_date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='电费充值记录';
+
+-- ========== 主题定制 ==========
+
+CREATE TABLE IF NOT EXISTS `user_theme` (
+    `id`            BIGINT       NOT NULL AUTO_INCREMENT,
+    `user_id`       BIGINT       NOT NULL,
+    `config`        JSON         NOT NULL COMMENT '主题配置JSON',
+    `created_at`    DATETIME     DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`    DATETIME     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_user_id` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户主题配置';

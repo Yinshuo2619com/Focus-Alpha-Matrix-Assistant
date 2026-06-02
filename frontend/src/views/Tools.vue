@@ -10,14 +10,18 @@
           :class="{ active: activeTab === 'tools' }"
           @click="activeTab = 'tools'"
         >
-          小工具
+          <el-icon class="tab-icon"><SetUp /></el-icon>
+          <span>小工具</span>
+          <div class="tab-indicator" v-if="activeTab === 'tools'"></div>
         </div>
         <div
           class="tab-item"
           :class="{ active: activeTab === 'recommend' }"
           @click="activeTab = 'recommend'"
         >
-          用户推荐
+          <el-icon class="tab-icon"><Promotion /></el-icon>
+          <span>用户推荐</span>
+          <div class="tab-indicator" v-if="activeTab === 'recommend'"></div>
         </div>
       </div>
 
@@ -205,7 +209,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Loading, Lock, View, Star, Delete, Link, Rank } from '@element-plus/icons-vue'
+import { Plus, Loading, Lock, View, Star, Delete, Link, Rank, SetUp, Promotion } from '@element-plus/icons-vue'
 import StatusBar from '@/components/StatusBar.vue'
 import request from '@/utils/request'
 import draggable from 'vuedraggable'
@@ -404,7 +408,7 @@ onMounted(() => {
 <style scoped lang="scss">
 .tools-page {
   min-height: 100vh;
-  background: #f5f7fa;
+  background: var(--page-bg);
 }
 
 .status-bar-placeholder {
@@ -421,10 +425,10 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 0;
-  background: white;
+  background: var(--card-bg);
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--card-shadow);
   flex-shrink: 0;
   width: 120px;
   margin-left: 20px;
@@ -433,32 +437,67 @@ onMounted(() => {
 }
 
 .tab-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   text-align: left;
   padding: 14px 16px;
   font-size: 15px;
-  color: #606266;
+  color: var(--text-regular);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s ease;
   border-left: 3px solid transparent;
+  position: relative;
+
+  .tab-icon {
+    font-size: 16px;
+    transition: transform 0.3s ease;
+  }
+
+  .tab-indicator {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 60%;
+    background: var(--accent);
+    border-radius: 0 2px 2px 0;
+    animation: tab-slide-in 0.3s ease;
+  }
 
   &:hover {
-    color: #409eff;
-    background: #f5f7fa;
+    color: var(--accent);
+    background: var(--page-bg);
+
+    .tab-icon {
+      transform: scale(1.1);
+    }
   }
 
   &.active {
-    color: #409eff;
+    color: var(--accent);
     font-weight: 600;
-    border-left-color: #409eff;
-    background: #ecf5ff;
+    background: var(--accent-light);
+  }
+}
+
+@keyframes tab-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-50%) scaleY(0);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-50%) scaleY(1);
   }
 }
 
 .tab-content {
-  background: white;
+  background: var(--card-bg);
   border-radius: 12px;
   padding: 24px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--card-shadow);
   min-height: 400px;
   flex: 1;
   min-width: 0;
@@ -472,7 +511,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   padding: 80px 0;
-  color: #909399;
+  color: var(--text-secondary);
 
   .placeholder-icon {
     font-size: 48px;
@@ -490,7 +529,7 @@ onMounted(() => {
   align-items: center;
   gap: 12px;
   padding: 80px 0;
-  color: #909399;
+  color: var(--text-secondary);
   font-size: 15px;
 
   .el-icon {
@@ -516,7 +555,7 @@ onMounted(() => {
   justify-content: center;
   gap: 8px;
   padding: 60px 0;
-  color: #909399;
+  color: var(--text-secondary);
 }
 
 .empty-state {
@@ -531,17 +570,21 @@ onMounted(() => {
 }
 
 .recommend-card {
-  background: #fff;
-  border: 1px solid #ebeef5;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
   border-radius: 10px;
   overflow: hidden;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s ease;
   position: relative;
 
   &:hover {
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-    transform: translateY(-2px);
+    box-shadow: var(--card-shadow-hover);
+    transform: translateY(-4px);
+
+    .card-cover img {
+      transform: scale(1.03);
+    }
   }
 }
 
@@ -554,14 +597,14 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 12px 16px;
-  background: #ecf5ff;
+  background: var(--accent-light);
   border-radius: 8px;
   margin-bottom: 16px;
 }
 
 .edit-mode-hint {
   font-size: 14px;
-  color: #409eff;
+  color: var(--accent);
   font-weight: 500;
 }
 
@@ -577,7 +620,7 @@ onMounted(() => {
 
 .drag-chosen {
   box-shadow: 0 4px 20px rgba(64, 158, 255, 0.3);
-  border-color: #409eff;
+  border-color: var(--accent);
 }
 
 .edit-card {
@@ -595,12 +638,12 @@ onMounted(() => {
   right: 8px;
   width: 32px;
   height: 32px;
-  background: rgba(64, 158, 255, 0.1);
+  background: var(--accent-light);
   border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #409eff;
+  color: var(--accent);
   font-size: 18px;
   z-index: 2;
 }
@@ -624,6 +667,7 @@ onMounted(() => {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    transition: transform 0.4s ease;
   }
 }
 
@@ -661,7 +705,7 @@ onMounted(() => {
 .card-title {
   font-size: 15px;
   font-weight: 600;
-  color: #303133;
+  color: var(--text-primary);
   margin: 0 0 6px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -669,7 +713,7 @@ onMounted(() => {
 
   .external-link-icon {
     font-size: 13px;
-    color: #409eff;
+    color: var(--accent);
     margin-left: 4px;
     vertical-align: middle;
   }
@@ -677,7 +721,7 @@ onMounted(() => {
 
 .card-summary {
   font-size: 13px;
-  color: #909399;
+  color: var(--text-secondary);
   margin: 0 0 10px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -688,7 +732,7 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   font-size: 12px;
-  color: #909399;
+  color: var(--text-secondary);
   margin-bottom: 6px;
 }
 
@@ -696,7 +740,7 @@ onMounted(() => {
   display: flex;
   gap: 14px;
   font-size: 12px;
-  color: #909399;
+  color: var(--text-secondary);
 
   span {
     display: flex;
@@ -719,14 +763,20 @@ onMounted(() => {
   .tab-item {
     flex: 1;
     text-align: center;
+    justify-content: center;
     padding: 14px 0;
     border-left: none;
     border-bottom: 2px solid transparent;
+    gap: 4px;
+
+    .tab-indicator {
+      display: none;
+    }
 
     &.active {
       border-left-color: transparent;
-      border-bottom-color: #409eff;
-      background: white;
+      border-bottom-color: var(--accent);
+      background: var(--card-bg);
     }
   }
 

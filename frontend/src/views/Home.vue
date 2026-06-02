@@ -141,7 +141,7 @@ const handleRefresh = async () => {
 <style scoped lang="scss">
 .home-page {
   min-height: 100vh;
-  background: #f5f7fa;
+  background: var(--page-bg);
   display: flex;
   flex-direction: column;
 }
@@ -173,10 +173,10 @@ const handleRefresh = async () => {
 }
 
 .schedule-section {
-  background: white;
+  background: var(--card-bg);
   border-radius: 12px;
   padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--card-shadow);
   flex: 1;
   min-width: 0;
 }
@@ -196,7 +196,7 @@ const handleRefresh = async () => {
 .schedule-title {
   margin: 0;
   font-size: 18px;
-  color: #303133;
+  color: var(--text-primary);
 }
 
 .loading-wrapper {
@@ -205,7 +205,7 @@ const handleRefresh = async () => {
   justify-content: center;
   gap: 8px;
   padding: 40px 0;
-  color: #909399;
+  color: var(--text-secondary);
 }
 
 .empty-schedule {
@@ -216,20 +216,20 @@ const handleRefresh = async () => {
   text-align: center;
   padding: 16px 0;
   font-size: 13px;
-  color: #999;
+  color: var(--text-secondary);
 
   a {
-    color: #999;
+    color: var(--text-secondary);
     text-decoration: none;
     margin: 0 12px;
 
     &:hover {
-      color: #409EFF;
+      color: var(--accent);
     }
   }
 
   .icp-divider {
-    color: #ccc;
+    color: var(--text-placeholder);
   }
 
   .icp-gongan-icon {
@@ -244,7 +244,7 @@ const handleRefresh = async () => {
 }
 
 .share-hint {
-  color: #606266;
+  color: var(--text-regular);
   font-size: 14px;
   margin-bottom: 16px;
 }

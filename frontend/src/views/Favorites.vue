@@ -120,7 +120,7 @@ onMounted(() => {
 <style scoped lang="scss">
 .favorites-page {
   min-height: 100vh;
-  background: #f5f7fa;
+  background: var(--page-bg);
 }
 
 .status-bar-placeholder {
@@ -142,7 +142,7 @@ onMounted(() => {
   h2 {
     font-size: 20px;
     font-weight: 600;
-    color: #303133;
+    color: var(--text-primary);
     margin: 0;
   }
 }
@@ -153,14 +153,14 @@ onMounted(() => {
   justify-content: center;
   gap: 8px;
   padding: 60px 0;
-  color: #909399;
+  color: var(--text-secondary);
 }
 
 .empty-state {
   padding: 40px 0;
-  background: white;
+  background: var(--card-bg);
   border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--card-shadow);
 }
 
 .favorites-grid {
@@ -171,8 +171,8 @@ onMounted(() => {
 }
 
 .favorite-card {
-  background: #fff;
-  border: 1px solid #ebeef5;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
   border-radius: 10px;
   overflow: hidden;
   cursor: pointer;
@@ -180,7 +180,7 @@ onMounted(() => {
   position: relative;
 
   &:hover {
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--card-shadow-hover);
     transform: translateY(-2px);
   }
 }
@@ -226,7 +226,7 @@ onMounted(() => {
 .card-title {
   font-size: 15px;
   font-weight: 600;
-  color: #303133;
+  color: var(--text-primary);
   margin: 0 0 6px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -235,7 +235,7 @@ onMounted(() => {
 
 .card-summary {
   font-size: 13px;
-  color: #909399;
+  color: var(--text-secondary);
   margin: 0 0 10px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -246,7 +246,7 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   font-size: 12px;
-  color: #909399;
+  color: var(--text-secondary);
   margin-bottom: 6px;
 }
 
@@ -254,7 +254,7 @@ onMounted(() => {
   display: flex;
   gap: 14px;
   font-size: 12px;
-  color: #909399;
+  color: var(--text-secondary);
 
   span {
     display: flex;

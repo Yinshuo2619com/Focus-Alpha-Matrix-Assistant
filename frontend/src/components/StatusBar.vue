@@ -27,6 +27,7 @@
         <div class="time-line">{{ currentTime }}</div>
       </div>
     </div>
+    <ThemeSwitcher />
     <div class="user-info" @mouseenter="showMenu = true" @mouseleave="showMenu = false">
         <span class="username">{{ store.userInfo?.nickname || '用户' }}</span>
         <img :src="store.userAvatar" alt="用户头像" class="avatar-img" />
@@ -72,6 +73,7 @@ import { useUserStore } from '@/stores/user'
 import { User, SwitchButton, UserFilled, Operation, HomeFilled, Grid, Star, Bell } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useNotification } from '@/composables/useNotification'
+import ThemeSwitcher from './ThemeSwitcher.vue'
 
 
 defineOptions({
@@ -166,8 +168,8 @@ onUnmounted(() => {
   width: 100%;
   position: fixed;       
   height: 60px;
-  background-color: #b7a091;
-  color: white;
+  background-color: var(--statusbar-bg, #b7a091);
+  color: var(--statusbar-text, #fff);
   line-height: 60px;
   text-align: center;
   z-index: 999;
@@ -210,7 +212,7 @@ onUnmounted(() => {
 }
 
 .hamburger-icon {
-  color: white;
+  color: var(--statusbar-text, #fff);
   font-size: 28px;
   transition: transform 0.2s;
 }
@@ -221,15 +223,15 @@ onUnmounted(() => {
   right: -4px;
   width: 10px;
   height: 10px;
-  background: #f56c6c;
+  background: var(--statusbar-badge-bg, #f56c6c);
   border-radius: 50%;
-  border: 2px solid #b7a091;
+  border: 2px solid var(--statusbar-bg, #b7a091);
 }
 
 .menu-badge {
   margin-left: auto;
-  background: #f56c6c;
-  color: white;
+  background: var(--statusbar-badge-bg, #f56c6c);
+  color: var(--statusbar-text, #fff);
   font-size: 10px;
   min-width: 18px;
   height: 18px;
@@ -259,7 +261,7 @@ onUnmounted(() => {
 }
 
 .username {
-  color: white;
+  color: var(--statusbar-text, #fff);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -286,9 +288,9 @@ onUnmounted(() => {
   position: absolute;
   top: 50px;
   right: 0;
-  background: white;
+  background: var(--dropdown-bg, #fff);
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--dropdown-shadow, 0 4px 12px rgba(0,0,0,0.15));
   min-width: 140px;
   overflow: hidden;
   z-index: 1001;
@@ -300,12 +302,12 @@ onUnmounted(() => {
   padding: 12px 16px;
   cursor: pointer;
   transition: background-color 0.2s;
-  color: #333;
+  color: var(--text-primary, #333);
   font-size: 14px;
 }
 
 .menu-item:hover {
-  background-color: #f5f5f5;
+  background-color: var(--dropdown-hover-bg, #f5f5f5);
 }
 
 .menu-item .el-icon {

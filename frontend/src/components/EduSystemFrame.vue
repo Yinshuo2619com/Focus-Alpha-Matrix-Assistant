@@ -114,7 +114,7 @@ defineExpose({ getIframe })
   justify-content: center;
   gap: 12px;
   background: #fafafa;
-  color: #909399;
+  color: var(--text-secondary);
   z-index: 1;
 }
 

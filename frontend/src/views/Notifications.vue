@@ -274,7 +274,7 @@ onMounted(() => {
 <style scoped lang="scss">
 .notifications-page {
   min-height: 100vh;
-  background: #f5f7fa;
+  background: var(--page-bg);
 }
 
 .status-bar-placeholder {
@@ -299,9 +299,9 @@ onMounted(() => {
 
 .column {
   flex: 1;
-  background: white;
+  background: var(--card-bg);
   border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--card-shadow);
   overflow: hidden;
 }
 
@@ -315,7 +315,7 @@ onMounted(() => {
   h2 {
     margin: 0;
     font-size: 16px;
-    color: #303133;
+    color: var(--text-primary);
   }
 }
 
@@ -334,7 +334,7 @@ onMounted(() => {
 
   .empty-text {
     font-size: 14px;
-    color: #c0c4cc;
+    color: var(--text-placeholder);
     margin: 0;
   }
 }
@@ -378,7 +378,7 @@ onMounted(() => {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #409eff;
+  background: var(--accent);
 }
 
 .item-avatar {
@@ -409,7 +409,7 @@ onMounted(() => {
   border: 2px solid #fff;
 
   &.type-COMMENT_REPLY {
-    background: #409eff;
+    background: var(--accent);
   }
 
   &.type-COMMENT_LIKE {
@@ -428,7 +428,7 @@ onMounted(() => {
 
 .item-text {
   font-size: 14px;
-  color: #303133;
+  color: var(--text-primary);
   line-height: 1.6;
 }
 
@@ -438,12 +438,12 @@ onMounted(() => {
 }
 
 .action-text {
-  color: #606266;
+  color: var(--text-regular);
 }
 
 .item-preview {
   font-size: 13px;
-  color: #909399;
+  color: var(--text-secondary);
   margin-top: 4px;
   line-height: 1.5;
   display: -webkit-box;
@@ -454,7 +454,7 @@ onMounted(() => {
 
 .item-time {
   font-size: 12px;
-  color: #c0c4cc;
+  color: var(--text-placeholder);
   margin-top: 6px;
 }
 
@@ -483,7 +483,7 @@ onMounted(() => {
 
 .comment-content {
   font-size: 14px;
-  color: #303133;
+  color: var(--text-primary);
   line-height: 1.6;
   word-break: break-word;
   margin-bottom: 8px;
@@ -505,7 +505,7 @@ onMounted(() => {
   align-items: center;
   gap: 4px;
   font-size: 12px;
-  color: #409eff;
+  color: var(--accent);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -514,7 +514,7 @@ onMounted(() => {
 
 .comment-time {
   font-size: 12px;
-  color: #c0c4cc;
+  color: var(--text-placeholder);
   flex-shrink: 0;
 }
 
@@ -535,7 +535,7 @@ onMounted(() => {
   justify-content: center;
   gap: 8px;
   padding: 100px 0;
-  color: #909399;
+  color: var(--text-secondary);
   width: 100%;
 }
 
@@ -546,10 +546,10 @@ onMounted(() => {
 
   .mobile-tabs {
     display: flex;
-    background: white;
+    background: var(--card-bg);
     border-radius: 12px;
     overflow: hidden;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    box-shadow: var(--card-shadow);
     margin-bottom: 12px;
   }
 
@@ -558,15 +558,15 @@ onMounted(() => {
     text-align: center;
     padding: 14px 0;
     font-size: 15px;
-    color: #606266;
+    color: var(--text-regular);
     cursor: pointer;
     position: relative;
     transition: all 0.2s;
 
     &.active {
-      color: #409eff;
+      color: var(--accent);
       font-weight: 600;
-      background: #ecf5ff;
+      background: var(--accent-light);
     }
   }
 

@@ -1,0 +1,91 @@
+<h2>自定义页面布局</h2>
+<p class="subtitle">左侧分类导航 + 右侧配置面板，参考宝塔风格</p>
+
+<div class="mockup">
+  <div class="mockup-header">自定义主题 - 独立页面预览</div>
+  <div class="mockup-body" style="padding:0;overflow:hidden;border-radius:8px">
+    <!-- 页面 header -->
+    <div style="background:#2c3e50;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;color:white">
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="font-size:18px;cursor:pointer">←</span>
+        <span style="font-size:16px;font-weight:600">主题自定义</span>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button style="background:transparent;border:1px solid rgba(255,255,255,0.3);color:white;padding:6px 16px;border-radius:4px;font-size:13px;cursor:pointer">重置默认</button>
+        <button style="background:#409eff;border:none;color:white;padding:6px 16px;border-radius:4px;font-size:13px;cursor:pointer">保存配置</button>
+        <button style="background:transparent;border:1px solid rgba(255,255,255,0.3);color:white;padding:6px 16px;border-radius:4px;font-size:13px;cursor:pointer">导入/导出 JSON</button>
+      </div>
+    </div>
+
+    <div style="display:flex;min-height:400px">
+      <!-- 左侧导航 -->
+      <div style="width:180px;background:#f0f2f5;border-right:1px solid #e4e7ed;padding:12px 0">
+        <div style="padding:10px 20px;font-size:13px;color:#409eff;background:ecf5ff;cursor:pointer;border-right:3px solid #409eff;font-weight:500">🎨 主题</div>
+        <div style="padding:10px 20px;font-size:13px;color:#606266;cursor:pointer">🏷️ Logo</div>
+        <div style="padding:10px 20px;font-size:13px;color:#606266;cursor:pointer">📱 侧边栏</div>
+        <div style="padding:10px 20px;font-size:13px;color:#606266;cursor:pointer">🖼️ 界面</div>
+        <div style="padding:10px 20px;font-size:13px;color:#606266;cursor:pointer">🏠 首页</div>
+        <div style="padding:10px 20px;font-size:13px;color:#606266;cursor:pointer">🔐 登录页</div>
+      </div>
+
+      <!-- 右侧配置 -->
+      <div style="flex:1;padding:24px;background:white">
+        <h3 style="font-size:15px;color:#303133;margin-bottom:20px">主题设置</h3>
+
+        <!-- 预设主题 -->
+        <div style="margin-bottom:20px">
+          <label style="font-size:13px;color:#606266;display:block;margin-bottom:8px">预设主题</label>
+          <div style="display:flex;gap:10px">
+            <div style="width:60px;height:36px;background:#f5f7fa;border:2px solid #409eff;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;color:#606266">浅色</div>
+            <div style="width:60px;height:36px;background:#1a1a2e;border:2px solid transparent;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;color:#aaa">深色</div>
+            <div style="width:60px;height:36px;background:linear-gradient(135deg,#f5f7fa 50%,#1a1a2e 50%);border:2px solid transparent;border-radius:6px;cursor:pointer"></div>
+          </div>
+        </div>
+
+        <!-- 主题色 -->
+        <div style="margin-bottom:20px">
+          <label style="font-size:13px;color:#606266;display:block;margin-bottom:8px">主题色</label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <div style="width:28px;height:28px;background:#409eff;border-radius:50%;border:2px solid white;box-shadow:0 0 0 2px #409eff;cursor:pointer"></div>
+            <div style="width:28px;height:28px;background:#10B981;border-radius:50%;cursor:pointer"></div>
+            <div style="width:28px;height:28px;background:#f56c6c;border-radius:50%;cursor:pointer"></div>
+            <div style="width:28px;height:28px;background:#e6a23c;border-radius:50%;cursor:pointer"></div>
+            <div style="width:28px;height:28px;background:#909399;border-radius:50%;cursor:pointer"></div>
+            <input style="width:120px;height:32px;border:1px solid #dcdfe6;border-radius:4px;padding:0 8px;font-size:13px;margin-left:8px" value="#409eff" />
+          </div>
+        </div>
+
+        <!-- 圆角 -->
+        <div style="margin-bottom:20px">
+          <label style="font-size:13px;color:#606266;display:block;margin-bottom:8px">圆角大小</label>
+          <div style="display:flex;gap:10px">
+            <div style="padding:6px 16px;border:1px solid #dcdfe6;border-radius:2px;font-size:12px;cursor:pointer;color:#606266">无</div>
+            <div style="padding:6px 16px;border:2px solid #409eff;border-radius:6px;font-size:12px;cursor:pointer;color:#409eff">小</div>
+            <div style="padding:6px 16px;border:1px solid #dcdfe6;border-radius:12px;font-size:12px;cursor:pointer;color:#606266">中</div>
+            <div style="padding:6px 16px;border:1px solid #dcdfe6;border-radius:20px;font-size:12px;cursor:pointer;color:#606266">大</div>
+          </div>
+        </div>
+
+        <!-- 透明度 -->
+        <div style="margin-bottom:20px">
+          <label style="font-size:13px;color:#606266;display:block;margin-bottom:8px">内容区域透明度</label>
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="flex:1;height:6px;background:#e4e7ed;border-radius:3px;position:relative">
+              <div style="position:absolute;left:70%;top:-4px;width:14px;height:14px;background:#409eff;border-radius:50%;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.2)"></div>
+            </div>
+            <span style="font-size:13px;color:#606266;width:36px;text-align:right">70%</span>
+          </div>
+        </div>
+
+        <!-- 背景图 -->
+        <div style="margin-bottom:20px">
+          <label style="font-size:13px;color:#606266;display:block;margin-bottom:8px">背景图片</label>
+          <div style="width:200px;height:120px;background:#f5f7fa;border:2px dashed #dcdfe6;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;cursor:pointer">
+            <span style="font-size:24px;color:#c0c4cc">+</span>
+            <span style="font-size:12px;color:#c0c4cc">点击上传图片</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

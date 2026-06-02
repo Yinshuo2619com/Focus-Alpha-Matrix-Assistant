@@ -420,7 +420,7 @@ onMounted(() => {
 .no-more {
   text-align: center;
   margin-top: 20px;
-  color: #909399;
+  color: var(--text-secondary);
   font-size: 14px;
 }
 

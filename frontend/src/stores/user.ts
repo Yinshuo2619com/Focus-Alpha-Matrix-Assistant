@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import request from '../utils/request'
+import { useThemeStore } from './theme'
 
 interface UserInfo {
   id: number
@@ -64,6 +65,10 @@ export const useUserStore = defineStore('user', () => {
     localStorage.removeItem('token')
     localStorage.removeItem('userInfo')
     sessionStorage.clear()
+
+    // 重置主题到默认状态
+    const themeStore = useThemeStore()
+    themeStore.resetTheme()
   }
 
   // 用户头像 getter - null 时自动使用默认头像
