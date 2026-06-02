@@ -310,40 +310,6 @@ public class ElectricityService {
     }
 
     /**
-     * 计算当日耗电 = 昨日余额 + 充值度数 - 今日余额
-     * 如果有未确认充值，返回 null（前端显示"余额增加"）
-     */
-    private BigDecimal calcConsumption(int roomId, LocalDate today, BigDecimal todayBalance) {
-        try {
-            BigDecimal yesterdayBalance = jdbcTemplate.queryForObject(
-                "SELECT balance FROM electricity_balance WHERE room_id = ? AND record_date = ?",
-                BigDecimal.class, roomId, today.minusDays(1));
-            if (yesterdayBalance == null) return null;
-
-            // 检查是否有充值记录
-            try {
-                Map<String, Object> recharge = jdbcTemplate.queryForMap(
-                    "SELECT kwh, confirmed FROM electricity_recharge WHERE room_id = ? AND record_date = ?",
-                    roomId, today);
-                int confirmed = ((Number) recharge.get("confirmed")).intValue();
-                BigDecimal kwh = (BigDecimal) recharge.get("kwh");
-                if (confirmed == 0) {
-                    // 未确认充值，不计算耗电
-                    return null;
-                }
-                // 已确认充值，扣除充值部分
-                return yesterdayBalance.add(kwh).subtract(todayBalance);
-            } catch (Exception e) {
-                // 无充值记录，正常计算
-                return yesterdayBalance.subtract(todayBalance);
-            }
-        } catch (Exception e) {
-            // 无昨日记录
-        }
-        return null;
-    }
-
-    /**
      * 回算昨天的 consumption（用今天的 balance 作为昨天的结束余额）
      * 两次采集都是凌晨4点，所以 todayBalance 是昨天结束时的实际余额
      */
