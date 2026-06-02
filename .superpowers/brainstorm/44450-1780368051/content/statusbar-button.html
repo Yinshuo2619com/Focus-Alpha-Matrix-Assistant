@@ -1,0 +1,80 @@
+<h2>状态栏装饰按钮方案</h2>
+<p class="subtitle">选择按钮在状态栏中的位置和交互方式</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>右侧独立按钮（推荐）</h3>
+      <p>在用户头像左侧添加一个主题图标按钮，点击弹出 Popover 显示"主题切换"和"自定义"两个选项</p>
+      <div class="mockup" style="margin-top:12px">
+        <div class="mockup-header">状态栏预览</div>
+        <div class="mockup-body" style="background:#b7a091;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;color:white;border-radius:8px">
+          <div style="display:flex;align-items:center;gap:16px">
+            <span style="font-size:20px;cursor:pointer">☰</span>
+            <span style="font-size:14px">2026年06月02日 周二 14:30:00</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:16px">
+            <div style="position:relative">
+              <span style="font-size:20px;cursor:pointer;background:rgba(255,255,255,0.15);padding:6px 8px;border-radius:6px">🎨</span>
+              <div style="position:absolute;top:36px;right:0;background:white;color:#333;border-radius:8px;padding:8px 0;box-shadow:0 4px 16px rgba(0,0,0,0.15);width:140px;font-size:13px;z-index:10">
+                <div style="padding:8px 16px;cursor:pointer;display:flex;align-items:center;gap:8px">
+                  <span>🌗</span> 主题切换
+                </div>
+                <div style="padding:8px 16px;cursor:pointer;display:flex;align-items:center;gap:8px">
+                  <span>⚙️</span> 自定义
+                </div>
+              </div>
+            </div>
+            <span style="font-size:14px">张三</span>
+            <div style="width:32px;height:32px;background:rgba(255,255,255,0.3);border-radius:50%"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>左侧汉堡菜单内</h3>
+      <p>在现有的汉堡菜单下拉中增加"主题设置"选项，不新增按钮</p>
+      <div class="mockup" style="margin-top:12px">
+        <div class="mockup-header">状态栏预览</div>
+        <div class="mockup-body" style="background:#b7a091;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;color:white;border-radius:8px">
+          <div style="display:flex;align-items:center;gap:16px">
+            <span style="font-size:20px;cursor:pointer">☰</span>
+            <span style="font-size:14px">2026年06月02日 周二 14:30:00</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:16px">
+            <span style="font-size:14px">张三</span>
+            <div style="width:32px;height:32px;background:rgba(255,255,255,0.3);border-radius:50%"></div>
+          </div>
+        </div>
+        <div style="background:white;color:#333;border-radius:8px;padding:8px 0;box-shadow:0 4px 16px rgba(0,0,0,0.15);width:160px;font-size:13px;margin-top:8px;margin-left:20px">
+          <div style="padding:8px 16px;cursor:pointer">🏠 首页</div>
+          <div style="padding:8px 16px;cursor:pointer">🔧 工具</div>
+          <div style="padding:8px 16px;cursor:pointer">🔔 消息</div>
+          <div style="border-top:1px solid #eee;margin:4px 0"></div>
+          <div style="padding:8px 16px;cursor:pointer;color:#409eff">🎨 主题设置</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>底部悬浮按钮</h3>
+      <p>在页面右下角添加一个悬浮的主题设置按钮，不修改状态栏</p>
+      <div class="mockup" style="margin-top:12px">
+        <div class="mockup-header">页面预览</div>
+        <div class="mockup-body" style="background:#f5f7fa;padding:16px;border-radius:8px;position:relative;min-height:120px">
+          <div style="background:#b7a091;padding:12px 20px;color:white;border-radius:8px;font-size:14px">状态栏（不变）</div>
+          <div style="background:white;margin-top:12px;padding:20px;border-radius:8px;font-size:13px;color:#999">页面内容...</div>
+          <div style="position:absolute;bottom:16px;right:16px;width:48px;height:48px;background:#409eff;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:20px;box-shadow:0 4px 12px rgba(64,158,255,0.4);cursor:pointer">🎨</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -197,7 +197,7 @@ onMounted(() => {
   align-items: center;
   gap: 4px;
   font-size: 13px;
-  color: #409eff;
+  color: var(--accent);
   cursor: pointer;
   overflow: hidden;
   text-overflow: ellipsis;

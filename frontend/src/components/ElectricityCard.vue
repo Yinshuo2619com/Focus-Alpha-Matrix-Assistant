@@ -82,7 +82,7 @@ onMounted(fetchSummary)
 
 <style scoped lang="scss">
 .electricity-card {
-  background: white;
+  background: var(--card-bg);
   border-radius: 12px;
   padding: 20px;
   border: 1px solid #dcdfe6;
@@ -99,22 +99,22 @@ onMounted(fetchSummary)
 .card-title {
   font-size: 16px;
   font-weight: 600;
-  color: #303133;
+  color: var(--text-primary);
 }
 
 .refresh-btn {
   font-size: 16px;
-  color: #909399;
+  color: var(--text-secondary);
   cursor: pointer;
   transition: color 0.2s, transform 0.3s;
 
   &:hover {
-    color: #409eff;
+    color: var(--accent);
   }
 
   &.spinning {
     animation: spin 0.8s linear infinite;
-    color: #409eff;
+    color: var(--accent);
     pointer-events: none;
   }
 }
@@ -130,7 +130,7 @@ onMounted(fetchSummary)
 }
 
 .no-bind-text {
-  color: #909399;
+  color: var(--text-secondary);
   font-size: 14px;
   margin-bottom: 12px;
 }
@@ -141,14 +141,14 @@ onMounted(fetchSummary)
   justify-content: center;
   gap: 8px;
   padding: 24px 0;
-  color: #909399;
+  color: var(--text-secondary);
 }
 
 .card-content {
   .room-name {
     font-size: 15px;
     font-weight: 500;
-    color: #409eff;
+    color: var(--accent);
     margin-bottom: 16px;
   }
 }
@@ -167,13 +167,13 @@ onMounted(fetchSummary)
 
 .stat-label {
   font-size: 12px;
-  color: #909399;
+  color: var(--text-secondary);
 }
 
 .stat-value {
   font-size: 18px;
   font-weight: 600;
-  color: #303133;
+  color: var(--text-primary);
 
   &.consumption {
     color: #e6a23c;
@@ -186,7 +186,7 @@ onMounted(fetchSummary)
   justify-content: flex-end;
   gap: 4px;
   font-size: 13px;
-  color: #409eff;
+  color: var(--accent);
   cursor: pointer;
   transition: opacity 0.2s;
 

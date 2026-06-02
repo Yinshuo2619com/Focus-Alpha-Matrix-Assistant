@@ -6,6 +6,8 @@
 </template>
 
 <style>
+@import './styles/variables.css';
+
 * {
   margin: 0;
   padding: 0;

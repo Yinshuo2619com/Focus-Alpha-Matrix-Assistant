@@ -141,7 +141,7 @@ const handleExportIcs = () => {
 <style scoped lang="scss">
 .share-page {
   min-height: 100vh;
-  background: #f5f7fa;
+  background: var(--page-bg);
   padding: 20px;
   max-width: 900px;
   margin: 0 auto;
@@ -155,7 +155,7 @@ const handleExportIcs = () => {
 .share-title {
   margin: 0;
   font-size: 20px;
-  color: #303133;
+  color: var(--text-primary);
 }
 
 .schedule-meta {
@@ -164,9 +164,9 @@ const handleExportIcs = () => {
   gap: 16px;
   margin-bottom: 16px;
   padding: 16px;
-  background: white;
+  background: var(--card-bg);
   border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--card-shadow);
 }
 
 .meta-item {
@@ -177,20 +177,20 @@ const handleExportIcs = () => {
 
 .meta-label {
   font-size: 12px;
-  color: #909399;
+  color: var(--text-secondary);
 }
 
 .meta-value {
   font-size: 15px;
-  color: #303133;
+  color: var(--text-primary);
   font-weight: 500;
 }
 
 .schedule-section {
-  background: white;
+  background: var(--card-bg);
   border-radius: 12px;
   padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--card-shadow);
 }
 
 .loading-wrapper {
@@ -199,7 +199,7 @@ const handleExportIcs = () => {
   justify-content: center;
   gap: 8px;
   padding: 60px 0;
-  color: #909399;
+  color: var(--text-secondary);
 }
 
 .error-wrapper {

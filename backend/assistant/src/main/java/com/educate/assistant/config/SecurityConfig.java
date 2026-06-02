@@ -46,6 +46,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/recommend/image/**").permitAll() // 推荐内容图片代理
                 .requestMatchers(HttpMethod.GET, "/api/recommend/cover/**").permitAll() // 推荐封面图片代理
                 .requestMatchers(HttpMethod.GET, "/api/recommend/content/**").permitAll() // 推荐内容代理
+                .requestMatchers(HttpMethod.GET, "/api/theme/image/**").permitAll() // 主题图片公开访问
                 .requestMatchers(HttpMethod.GET, "/api/recommendations/*/comments").permitAll() // 评论列表公开访问
                 .requestMatchers(HttpMethod.GET, "/api/tools").permitAll() // 工具列表公开访问
                 .requestMatchers("/ws/**").permitAll() // WebSocket 握手由处理器自行验证 JWT

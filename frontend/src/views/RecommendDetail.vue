@@ -501,7 +501,7 @@ onMounted(async () => {
 <style scoped lang="scss">
 .detail-page {
   min-height: 100vh;
-  background: #f5f7fa;
+  background: var(--page-bg);
 }
 
 .status-bar-placeholder {
@@ -532,7 +532,7 @@ onMounted(async () => {
   justify-content: center;
   gap: 8px;
   padding: 80px 0;
-  color: #909399;
+  color: var(--text-secondary);
 }
 
 .empty-state {
@@ -540,10 +540,10 @@ onMounted(async () => {
 }
 
 .detail-card {
-  background: white;
+  background: var(--card-bg);
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--card-shadow);
 }
 
 .detail-cover {
@@ -580,12 +580,12 @@ onMounted(async () => {
     .author-name {
       font-size: 14px;
       font-weight: 600;
-      color: #303133;
+      color: var(--text-primary);
     }
 
     .author-time {
       font-size: 12px;
-      color: #909399;
+      color: var(--text-secondary);
     }
   }
 }
@@ -597,13 +597,13 @@ onMounted(async () => {
 .detail-title {
   font-size: 24px;
   font-weight: 700;
-  color: #303133;
+  color: var(--text-primary);
   margin: 0 0 8px;
 }
 
 .detail-summary {
   font-size: 15px;
-  color: #909399;
+  color: var(--text-secondary);
   margin: 0 0 16px;
 }
 
@@ -611,7 +611,7 @@ onMounted(async () => {
   display: flex;
   gap: 20px;
   font-size: 13px;
-  color: #909399;
+  color: var(--text-secondary);
   flex-wrap: wrap;
 
   span {
@@ -634,7 +634,7 @@ onMounted(async () => {
 .md-content {
   font-size: 15px;
   line-height: 1.8;
-  color: #303133;
+  color: var(--text-primary);
 
   :deep(h1), :deep(h2), :deep(h3) {
     margin: 20px 0 10px;
@@ -650,7 +650,7 @@ onMounted(async () => {
   }
 
   :deep(code) {
-    background: #f5f7fa;
+    background: var(--page-bg);
     padding: 2px 6px;
     border-radius: 4px;
     font-size: 13px;
@@ -658,7 +658,7 @@ onMounted(async () => {
   }
 
   :deep(pre) {
-    background: #f5f7fa;
+    background: var(--page-bg);
     padding: 14px;
     border-radius: 8px;
     overflow-x: auto;
@@ -671,10 +671,10 @@ onMounted(async () => {
   }
 
   :deep(blockquote) {
-    border-left: 4px solid #409eff;
+    border-left: 4px solid var(--accent);
     padding-left: 14px;
     margin: 10px 0;
-    color: #606266;
+    color: var(--text-regular);
   }
 
   :deep(ul), :deep(ol) {
@@ -694,13 +694,13 @@ onMounted(async () => {
     margin: 10px 0;
 
     th, td {
-      border: 1px solid #ebeef5;
+      border: var(--card-border);
       padding: 8px 12px;
       text-align: left;
     }
 
     th {
-      background: #f5f7fa;
+      background: var(--page-bg);
       font-weight: 600;
     }
   }
@@ -714,17 +714,17 @@ onMounted(async () => {
 
 /* 评论区样式 */
 .comment-section {
-  background: white;
+  background: var(--card-bg);
   border-radius: 12px;
   padding: 24px;
   margin-top: 16px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--card-shadow);
 }
 
 .comment-title {
   font-size: 18px;
   font-weight: 600;
-  color: #303133;
+  color: var(--text-primary);
   margin: 0 0 20px;
 }
 
@@ -744,10 +744,10 @@ onMounted(async () => {
   justify-content: center;
   gap: 12px;
   padding: 20px;
-  color: #909399;
+  color: var(--text-secondary);
   font-size: 14px;
   margin-bottom: 24px;
-  background: #f5f7fa;
+  background: var(--page-bg);
   border-radius: 8px;
 }
 
@@ -757,13 +757,13 @@ onMounted(async () => {
   justify-content: center;
   gap: 8px;
   padding: 30px 0;
-  color: #909399;
+  color: var(--text-secondary);
 }
 
 .comment-empty {
   text-align: center;
   padding: 30px 0;
-  color: #909399;
+  color: var(--text-secondary);
   font-size: 14px;
 }
 
@@ -812,17 +812,17 @@ onMounted(async () => {
 .comment-author {
   font-size: 14px;
   font-weight: 600;
-  color: #303133;
+  color: var(--text-primary);
 }
 
 .comment-time {
   font-size: 12px;
-  color: #909399;
+  color: var(--text-secondary);
 }
 
 .comment-text {
   font-size: 14px;
-  color: #303133;
+  color: var(--text-primary);
   line-height: 1.6;
   margin-bottom: 6px;
   word-break: break-word;
@@ -832,7 +832,7 @@ onMounted(async () => {
   display: flex;
   gap: 16px;
   font-size: 12px;
-  color: #909399;
+  color: var(--text-secondary);
 
   .action-btn {
     display: flex;
@@ -842,7 +842,7 @@ onMounted(async () => {
     transition: color 0.2s;
 
     &:hover {
-      color: #409eff;
+      color: var(--accent);
     }
 
   }

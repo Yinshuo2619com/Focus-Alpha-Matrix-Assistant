@@ -172,7 +172,7 @@ const handleForgotPassword = () => {
 .login-title {
   text-align: center;
   font-size: 24px;
-  color: #303133;
+  color: var(--text-primary);
   margin: 0;
 }
 

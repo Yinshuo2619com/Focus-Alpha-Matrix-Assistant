@@ -223,9 +223,9 @@ onMounted(() => {
 }
 
 .schedule-table th {
-  background: #f5f7fa;
+  background: var(--page-bg);
   font-weight: 600;
-  color: #606266;
+  color: var(--text-regular);
   padding: 8px 4px;
   height: 40px;
 }
@@ -237,9 +237,9 @@ onMounted(() => {
 
 .time-col {
   width: 50px;
-  background: #f5f7fa;
+  background: var(--page-bg);
   font-size: 11px;
-  color: #909399;
+  color: var(--text-secondary);
   padding: 4px !important;
 }
 
