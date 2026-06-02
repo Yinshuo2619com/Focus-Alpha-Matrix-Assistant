@@ -246,8 +246,8 @@ public class ElectricityService {
                             log.info("检测到房间 {} 余额上升 {} 度，标记为待确认充值", roomId, rechargeKwh);
                         }
 
-                        BigDecimal consumption = calcConsumption(roomId, today, balance);
-                        batchArgs.add(new Object[]{roomId, buiId, roomName, balance, consumption, today});
+                        // consumption 先存 null，由 recalcYesterday 在第二天回填
+                        batchArgs.add(new Object[]{roomId, buiId, roomName, balance, null, today});
                         totalCollected++;
                     }
                 } catch (Exception e) {
@@ -261,6 +261,13 @@ public class ElectricityService {
                 String sql = "INSERT IGNORE INTO electricity_balance (room_id, bui_id, room_name, balance, consumption, record_date) VALUES (?, ?, ?, ?, ?, ?)";
                 jdbcTemplate.batchUpdate(sql, batchArgs);
                 log.info("楼栋 {} 采集完成，插入 {} 条记录", BUILDINGS.getOrDefault(buiId, String.valueOf(buiId)), batchArgs.size());
+
+                // 回算昨天的 consumption（用今天的 balance 作为昨天的结束余额）
+                for (Object[] args : batchArgs) {
+                    int roomId = (int) args[0];
+                    BigDecimal todayBalance = (BigDecimal) args[3];
+                    recalcYesterday(roomId, today, todayBalance);
+                }
             }
 
             if (!rechargeArgs.isEmpty()) {
@@ -334,6 +341,39 @@ public class ElectricityService {
             // 无昨日记录
         }
         return null;
+    }
+
+    /**
+     * 回算昨天的 consumption（用今天的 balance 作为昨天的结束余额）
+     * 两次采集都是凌晨4点，所以 todayBalance 是昨天结束时的实际余额
+     */
+    private void recalcYesterday(int roomId, LocalDate today, BigDecimal todayBalance) {
+        LocalDate yesterday = today.minusDays(1);
+        try {
+            BigDecimal yesterdayBalance = jdbcTemplate.queryForObject(
+                "SELECT balance FROM electricity_balance WHERE room_id = ? AND record_date = ?",
+                BigDecimal.class, roomId, yesterday);
+            if (yesterdayBalance == null) return;
+
+            // 检查昨天是否有已确认的充值
+            BigDecimal rechargeKwh = BigDecimal.ZERO;
+            try {
+                Map<String, Object> recharge = jdbcTemplate.queryForMap(
+                    "SELECT kwh, confirmed FROM electricity_recharge WHERE room_id = ? AND record_date = ?",
+                    roomId, yesterday);
+                if (((Number) recharge.get("confirmed")).intValue() == 1) {
+                    rechargeKwh = (BigDecimal) recharge.get("kwh");
+                }
+            } catch (Exception ignored) {}
+
+            // consumption = 昨日余额 + 充值 - 今日余额（今日余额即昨日结束余额）
+            BigDecimal consumption = yesterdayBalance.add(rechargeKwh).subtract(todayBalance);
+            if (consumption.signum() < 0) consumption = BigDecimal.ZERO;
+
+            jdbcTemplate.update(
+                "UPDATE electricity_balance SET consumption = ? WHERE room_id = ? AND record_date = ?",
+                consumption, roomId, yesterday);
+        } catch (Exception ignored) {}
     }
 
     // ==================== 查询接口 ====================
@@ -485,7 +525,7 @@ public class ElectricityService {
         // 查最近一次的 consumption
         try {
             BigDecimal consumption = jdbcTemplate.queryForObject(
-                "SELECT consumption FROM electricity_balance WHERE room_id = ? ORDER BY record_date DESC LIMIT 1",
+                "SELECT consumption FROM electricity_balance WHERE room_id = ? AND consumption IS NOT NULL ORDER BY record_date DESC LIMIT 1",
                 BigDecimal.class, roomId);
             result.put("consumption", consumption);
         } catch (Exception e) {

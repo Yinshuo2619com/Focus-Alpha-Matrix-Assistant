@@ -4,6 +4,7 @@ import com.educate.assistant.common.Result;
 import com.educate.assistant.service.ElectricityService;
 import com.educate.assistant.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
@@ -144,5 +145,32 @@ public class ElectricityController {
         Long userId = userService.findUserIdByUsername(username);
         Map<String, Object> ranking = electricityService.getRanking(userId, type);
         return Result.success(ranking);
+    }
+
+    /**
+     * 手动触发采集（管理员）
+     */
+    @PostMapping("/collect")
+    public Result<String> manualCollect() {
+        if (!isAdmin()) return Result.error(403, "仅管理员可操作");
+        new Thread(() -> {
+            List<Integer> buiIds = electricityService.collectAll();
+            LocalDate today = LocalDate.now();
+            for (int buiId : buiIds) {
+                try {
+                    electricityService.computeAndCacheRanking(buiId, today);
+                    electricityService.computeAndCacheRanking(buiId, today.minusDays(1));
+                } catch (Exception e) {
+                    // ignore
+                }
+            }
+        }).start();
+        return Result.success("采集任务已触发");
+    }
+
+    private boolean isAdmin() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
     }
 }
