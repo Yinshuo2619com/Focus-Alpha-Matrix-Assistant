@@ -118,9 +118,9 @@ public class ElectricityController {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         Long userId = userService.findUserIdByUsername(username);
         LocalDate recordDate = LocalDate.parse((String) body.get("recordDate"));
-        BigDecimal amount = body.get("amount") != null ? new BigDecimal(body.get("amount").toString()) : null;
         BigDecimal kwh = new BigDecimal(body.get("kwh").toString());
-        electricityService.saveRecharge(userId, recordDate, amount, kwh);
+        BigDecimal price = body.get("price") != null ? new BigDecimal(body.get("price").toString()) : null;
+        electricityService.saveRecharge(userId, recordDate, kwh, price);
         return Result.success(null);
     }
 

@@ -1,3 +1,17 @@
+/* 背景图伪元素：用 position:fixed + GPU加速 替代 background-attachment:fixed，兼容移动端 */
+html::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-image: var(--bg-image, none);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  pointer-events: none;
+  transform: translate3d(0, 0, 0);
+}
+
 /* 主题变量 - 浅色模式（默认） */
 :root {
   --page-bg: #f5f7fa;

@@ -91,7 +91,9 @@
               <div class="recharge-info">
                 <span v-if="r.confirmed">
                   充值 {{ r.kwh }} 度
-                  <span v-if="r.amount">（{{ r.amount }} 元）</span>
+                  <span v-if="r.amount">（{{ r.amount }} 元</span>
+                  <span v-if="r.price">，{{ r.price }} 元/度）</span>
+                  <span v-else-if="r.amount">）</span>
                 </span>
                 <span v-else class="unconfirmed-text">
                   余额增加 {{ r.kwh }} 度（待确认）
@@ -114,17 +116,16 @@
           <el-input :value="currentRecharge?.record_date" disabled />
         </div>
         <div class="form-item">
-          <label>充值度数</label>
+          <label>充值度数（度）</label>
           <el-input-number v-model="rechargeForm.kwh" :min="0.01" :step="1" :precision="2" />
-        </div>
-        <el-divider>选择一种方式填写</el-divider>
-        <div class="form-item">
-          <label>充值金额（元）</label>
-          <el-input-number v-model="rechargeForm.amount" :min="0" :step="10" :precision="2" placeholder="可选" />
         </div>
         <div class="form-item">
           <label>电价（元/度）</label>
-          <el-input-number v-model="rechargeForm.price" :min="0.01" :step="0.01" :precision="2" />
+          <el-input-number v-model="rechargeForm.price" :min="0.01" :step="0.01" :precision="4" />
+        </div>
+        <div class="form-item" v-if="rechargeForm.kwh > 0 && rechargeForm.price > 0">
+          <label>充值金额</label>
+          <div class="calculated-amount">{{ (rechargeForm.kwh * rechargeForm.price).toFixed(2) }} 元</div>
         </div>
       </div>
       <template #footer>
@@ -177,7 +178,6 @@ const rechargeDialogVisible = ref(false)
 const currentRecharge = ref<any>(null)
 const rechargeForm = ref({
   kwh: 0,
-  amount: 0,
   price: 0.55
 })
 
@@ -473,8 +473,7 @@ const openRechargeDialog = (recharge: any) => {
   currentRecharge.value = recharge
   rechargeForm.value = {
     kwh: Number(recharge.kwh),
-    amount: recharge.amount ? Number(recharge.amount) : 0,
-    price: 0.55
+    price: recharge.price ? Number(recharge.price) : 0.55
   }
   rechargeDialogVisible.value = true
 }
@@ -483,8 +482,8 @@ const submitRecharge = async () => {
   try {
     const res: any = await request.post('/electricity/recharge', {
       recordDate: currentRecharge.value.record_date,
-      amount: rechargeForm.value.amount || null,
-      kwh: rechargeForm.value.kwh
+      kwh: rechargeForm.value.kwh,
+      price: rechargeForm.value.price
     })
     if (res.code === 200) {
       ElMessage.success('充值信息已更新')
@@ -775,6 +774,13 @@ onUnmounted(() => {
       font-size: 14px;
       color: var(--text-regular);
     }
+  }
+
+  .calculated-amount {
+    font-size: 18px;
+    font-weight: 600;
+    color: #e6a23c;
+    padding: 8px 0;
   }
 }
 

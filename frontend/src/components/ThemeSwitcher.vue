@@ -111,4 +111,20 @@ function goCustomize() {
   opacity: 0;
   transform: translateY(-10px);
 }
+
+@media screen and (max-width: 768px) {
+  .theme-switcher {
+    right: 120px;
+    top: 8px;
+  }
+
+  .theme-icon {
+    padding: 4px;
+  }
+
+  .theme-icon svg {
+    width: 16px;
+    height: 16px;
+  }
+}
 </style>
