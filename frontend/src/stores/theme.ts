@@ -155,11 +155,9 @@ export const useThemeStore = defineStore('theme', () => {
     const contentOpacity = cfg.interface.content_opacity / 100
 
     if (bgImage) {
-      document.body.style.backgroundImage = `url(${bgImage})`
-      document.body.style.backgroundSize = 'cover'
-      document.body.style.backgroundPosition = 'center'
-      document.body.style.backgroundAttachment = 'fixed'
-      document.body.style.backgroundRepeat = 'no-repeat'
+      // 用 html::before 伪元素显示背景图，position:fixed 避免移动端抖动和跟随滚动
+      html.style.setProperty('--bg-image', `url(${bgImage})`)
+      document.body.style.backgroundImage = 'none'
       // 遮罩：bg_image_opacity 控制图片清晰度，content_opacity 叠加内容区透明度
       const effectiveAlpha = (1 - bgImgOpacity) + bgImgOpacity * (1 - contentOpacity)
       const overlay = theme === 'dark'
@@ -167,6 +165,7 @@ export const useThemeStore = defineStore('theme', () => {
         : `rgba(245, 247, 250, ${effectiveAlpha})`
       html.style.setProperty('--page-bg', overlay)
     } else {
+      html.style.setProperty('--bg-image', 'none')
       document.body.style.backgroundImage = 'none'
       // 无背景图时，content_opacity 控制页面背景透明度（透出 body 底色）
       if (contentOpacity < 1) {

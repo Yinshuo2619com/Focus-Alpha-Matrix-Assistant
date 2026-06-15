@@ -258,7 +258,8 @@ public class ElectricityService {
             executor.shutdown();
 
             if (!batchArgs.isEmpty()) {
-                String sql = "INSERT IGNORE INTO electricity_balance (room_id, bui_id, room_name, balance, consumption, record_date) VALUES (?, ?, ?, ?, ?, ?)";
+                String sql = "INSERT INTO electricity_balance (room_id, bui_id, room_name, balance, consumption, record_date) VALUES (?, ?, ?, ?, ?, ?) " +
+                             "ON DUPLICATE KEY UPDATE balance = VALUES(balance)";
                 jdbcTemplate.batchUpdate(sql, batchArgs);
                 log.info("楼栋 {} 采集完成，插入 {} 条记录", BUILDINGS.getOrDefault(buiId, String.valueOf(buiId)), batchArgs.size());
 
@@ -324,22 +325,25 @@ public class ElectricityService {
             // 检查昨天是否有已确认的充值
             BigDecimal rechargeKwh = BigDecimal.ZERO;
             try {
-                Map<String, Object> recharge = jdbcTemplate.queryForMap(
-                    "SELECT kwh, confirmed FROM electricity_recharge WHERE room_id = ? AND record_date = ?",
-                    roomId, yesterday);
-                if (((Number) recharge.get("confirmed")).intValue() == 1) {
-                    rechargeKwh = (BigDecimal) recharge.get("kwh");
-                }
+                rechargeKwh = jdbcTemplate.queryForObject(
+                    "SELECT kwh FROM electricity_recharge WHERE room_id = ? AND record_date = ? AND confirmed = 1",
+                    BigDecimal.class, roomId, yesterday);
+                if (rechargeKwh == null) rechargeKwh = BigDecimal.ZERO;
             } catch (Exception ignored) {}
 
             // consumption = 昨日余额 + 充值 - 今日余额（今日余额即昨日结束余额）
             BigDecimal consumption = yesterdayBalance.add(rechargeKwh).subtract(todayBalance);
             if (consumption.signum() < 0) consumption = BigDecimal.ZERO;
 
-            jdbcTemplate.update(
+            int rows = jdbcTemplate.update(
                 "UPDATE electricity_balance SET consumption = ? WHERE room_id = ? AND record_date = ?",
                 consumption, roomId, yesterday);
-        } catch (Exception ignored) {}
+            if (rows == 0) {
+                log.warn("recalcYesterday 更新0行: roomId={}, date={}", roomId, yesterday);
+            }
+        } catch (Exception e) {
+            log.warn("recalcYesterday 失败: roomId={}, date={}, error={}", roomId, yesterday, e.getMessage());
+        }
     }
 
     // ==================== 查询接口 ====================
@@ -382,6 +386,21 @@ public class ElectricityService {
             }
         }
 
+        // 昨日耗电：如果今日记录的 consumption 为 null（采集后未回算），往前找最近有效的
+        if (result.get("consumption") == null) {
+            for (int i = 1; i <= 7; i++) {
+                try {
+                    BigDecimal c = jdbcTemplate.queryForObject(
+                        "SELECT consumption FROM electricity_balance WHERE room_id = ? AND record_date = ? AND consumption IS NOT NULL",
+                        BigDecimal.class, roomId, today.minusDays(i));
+                    if (c != null) {
+                        result.put("consumption", c);
+                        break;
+                    }
+                } catch (Exception ignored) {}
+            }
+        }
+
         return result;
     }
 
@@ -420,7 +439,7 @@ public class ElectricityService {
 
         // 充值记录
         List<Map<String, Object>> recharges = jdbcTemplate.queryForList(
-            "SELECT record_date, amount, kwh, confirmed FROM electricity_recharge WHERE room_id = ? AND record_date >= ? AND record_date <= ? ORDER BY record_date",
+            "SELECT record_date, amount, kwh, price, confirmed FROM electricity_recharge WHERE room_id = ? AND record_date >= ? AND record_date <= ? ORDER BY record_date",
             roomId, startDate, endDate);
         for (Map<String, Object> row : recharges) {
             row.put("record_date", row.get("record_date").toString());
@@ -488,15 +507,19 @@ public class ElectricityService {
         BigDecimal balance = queryBalance(roomId, buiId);
         result.put("balance", balance);
 
-        // 查最近一次的 consumption
-        try {
-            BigDecimal consumption = jdbcTemplate.queryForObject(
-                "SELECT consumption FROM electricity_balance WHERE room_id = ? AND consumption IS NOT NULL ORDER BY record_date DESC LIMIT 1",
-                BigDecimal.class, roomId);
-            result.put("consumption", consumption);
-        } catch (Exception e) {
-            result.put("consumption", null);
+        // 查昨日耗电：昨天的 consumption 由凌晨采集时 recalcYesterday 回算
+        // 如果昨天没数据或 consumption 为 null（还没回算），则往前找最近一条有效的
+        LocalDate today = LocalDate.now();
+        BigDecimal consumption = null;
+        for (int i = 1; i <= 7; i++) {
+            try {
+                consumption = jdbcTemplate.queryForObject(
+                    "SELECT consumption FROM electricity_balance WHERE room_id = ? AND record_date = ? AND consumption IS NOT NULL",
+                    BigDecimal.class, roomId, today.minusDays(i));
+                if (consumption != null) break;
+            } catch (Exception ignored) {}
         }
+        result.put("consumption", consumption);
         return result;
     }
 
@@ -504,12 +527,17 @@ public class ElectricityService {
 
     /**
      * 保存/更新充值记录
+     * @param kwh 充值度数
+     * @param price 电价（元/度），可为 null
      */
-    public void saveRecharge(Long userId, LocalDate recordDate, BigDecimal amount, BigDecimal kwh) {
+    public void saveRecharge(Long userId, LocalDate recordDate, BigDecimal kwh, BigDecimal price) {
         Map<String, Object> user = jdbcTemplate.queryForMap(
             "SELECT room_id FROM user WHERE id = ?", userId);
         Integer roomId = user.get("room_id") != null ? ((Number) user.get("room_id")).intValue() : null;
         if (roomId == null) throw new RuntimeException("未绑定宿舍");
+
+        // 金额 = 度数 × 电价
+        BigDecimal amount = (price != null) ? kwh.multiply(price).setScale(2, java.math.RoundingMode.HALF_UP) : null;
 
         // 检查是否已有记录
         try {
@@ -518,13 +546,13 @@ public class ElectricityService {
                 roomId, recordDate);
             // 已有记录，更新
             jdbcTemplate.update(
-                "UPDATE electricity_recharge SET amount = ?, kwh = ?, confirmed = 1 WHERE room_id = ? AND record_date = ?",
-                amount, kwh, roomId, recordDate);
+                "UPDATE electricity_recharge SET amount = ?, kwh = ?, price = ?, confirmed = 1 WHERE room_id = ? AND record_date = ?",
+                amount, kwh, price, roomId, recordDate);
         } catch (Exception e) {
             // 无记录，插入
             jdbcTemplate.update(
-                "INSERT INTO electricity_recharge (room_id, record_date, amount, kwh, confirmed) VALUES (?, ?, ?, ?, 1)",
-                roomId, recordDate, amount, kwh);
+                "INSERT INTO electricity_recharge (room_id, record_date, amount, kwh, price, confirmed) VALUES (?, ?, ?, ?, ?, 1)",
+                roomId, recordDate, amount, kwh, price);
         }
 
         // 重新计算该天的 consumption
@@ -541,31 +569,45 @@ public class ElectricityService {
         if (roomId == null) return Collections.emptyList();
 
         return jdbcTemplate.queryForList(
-            "SELECT record_date, amount, kwh, confirmed FROM electricity_recharge WHERE room_id = ? ORDER BY record_date DESC",
+            "SELECT record_date, amount, kwh, price, confirmed FROM electricity_recharge WHERE room_id = ? ORDER BY record_date DESC",
             roomId);
     }
 
     /**
-     * 重新计算指定日期的 consumption（充值确认后调用）
+     * 重新计算指定日期及次日的 consumption（充值确认后调用）
+     * 充值会影响当天和次日的计算，需要级联更新
      */
     private void recalcConsumption(int roomId, LocalDate date) {
+        calcOneDay(roomId, date);
+        calcOneDay(roomId, date.plusDays(1));
+    }
+
+    /**
+     * 计算单日 consumption = 前日余额 + 当日充值 - 当日余额
+     */
+    private void calcOneDay(int roomId, LocalDate date) {
         try {
-            Map<String, Object> balanceRecord = jdbcTemplate.queryForMap(
+            BigDecimal todayBalance = jdbcTemplate.queryForObject(
                 "SELECT balance FROM electricity_balance WHERE room_id = ? AND record_date = ?",
-                roomId, date);
-            BigDecimal todayBalance = (BigDecimal) balanceRecord.get("balance");
+                BigDecimal.class, roomId, date);
+            if (todayBalance == null) return;
 
             BigDecimal yesterdayBalance = jdbcTemplate.queryForObject(
                 "SELECT balance FROM electricity_balance WHERE room_id = ? AND record_date = ?",
                 BigDecimal.class, roomId, date.minusDays(1));
             if (yesterdayBalance == null) return;
 
-            Map<String, Object> recharge = jdbcTemplate.queryForMap(
-                "SELECT kwh FROM electricity_recharge WHERE room_id = ? AND record_date = ? AND confirmed = 1",
-                roomId, date);
-            BigDecimal kwh = (BigDecimal) recharge.get("kwh");
+            // 当日充值（可能没有）
+            BigDecimal rechargeKwh = BigDecimal.ZERO;
+            try {
+                rechargeKwh = jdbcTemplate.queryForObject(
+                    "SELECT kwh FROM electricity_recharge WHERE room_id = ? AND record_date = ? AND confirmed = 1",
+                    BigDecimal.class, roomId, date);
+            } catch (Exception ignored) {}
 
-            BigDecimal consumption = yesterdayBalance.add(kwh).subtract(todayBalance);
+            BigDecimal consumption = yesterdayBalance.add(rechargeKwh).subtract(todayBalance);
+            if (consumption.signum() < 0) consumption = BigDecimal.ZERO;
+
             jdbcTemplate.update(
                 "UPDATE electricity_balance SET consumption = ? WHERE room_id = ? AND record_date = ?",
                 consumption, roomId, date);
@@ -614,14 +656,15 @@ public class ElectricityService {
             // Top 30
             List<Map<String, Object>> top30 = rooms.subList(0, Math.min(30, rooms.size()));
             String topJson = objectMapper.writeValueAsString(top30);
-            String topKey = "elec:ranking:" + buiId + ":" + dateStr + ":top";
+            String topKey = "elec:ranking:v2:" + buiId + ":" + dateStr + ":top";
             redisTemplate.opsForValue().set(topKey, topJson, 25, TimeUnit.HOURS);
 
-            // Bottom 30
-            List<Map<String, Object>> bottom30 = rooms.subList(
-                Math.max(0, rooms.size() - 30), rooms.size());
+            // Bottom 30 — 反转为从最低到最高
+            List<Map<String, Object>> bottom30 = new ArrayList<>(rooms.subList(
+                Math.max(0, rooms.size() - 30), rooms.size()));
+            Collections.reverse(bottom30);
             String bottomJson = objectMapper.writeValueAsString(bottom30);
-            String bottomKey = "elec:ranking:" + buiId + ":" + dateStr + ":bottom";
+            String bottomKey = "elec:ranking:v2:" + buiId + ":" + dateStr + ":bottom";
             redisTemplate.opsForValue().set(bottomKey, bottomJson, 25, TimeUnit.HOURS);
 
             log.info("楼栋 {} 排行榜已缓存 ({}), 共 {} 间房间", buiId, dateStr, rooms.size());
@@ -643,10 +686,12 @@ public class ElectricityService {
         String roomName = (String) user.get("room_name");
         if (buiId == null) throw new RuntimeException("请先绑定宿舍");
 
-        // 排行日期为昨天（consumption 代表昨天的用量）
-        LocalDate rankingDate = LocalDate.now().minusDays(1);
+        // 排行日期：凌晨4点前显示前天的排行榜（昨天的数据要等4点采集），4点后显示昨天的
+        LocalDate rankingDate = java.time.LocalTime.now().isBefore(java.time.LocalTime.of(4, 0))
+            ? LocalDate.now().minusDays(2)
+            : LocalDate.now().minusDays(1);
         String dateStr = rankingDate.format(DATE_FMT);
-        String cacheKey = "elec:ranking:" + buiId + ":" + dateStr + ":" + type;
+        String cacheKey = "elec:ranking:v2:" + buiId + ":" + dateStr + ":" + type;
 
         // 1. 先查 Redis
         List<Map<String, Object>> list = null;
