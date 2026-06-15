@@ -1,6 +1,6 @@
 <template>
-  <div class="theme-switcher" @mouseenter="showPopover = true" @mouseleave="showPopover = false">
-    <div class="theme-icon" @click="showPopover = !showPopover">
+  <div class="theme-switcher" ref="switcherRef">
+    <div class="theme-icon" @click.stop="showPopover = !showPopover">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
         <path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.47a1 1 0 00.99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.84l.58-3.47a2 2 0 00-1.34-2.23z"/>
       </svg>
@@ -21,7 +21,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useThemeStore } from '@/stores/theme'
 import { Sunny, Moon, Monitor, Setting } from '@element-plus/icons-vue'
@@ -29,6 +29,16 @@ import { Sunny, Moon, Monitor, Setting } from '@element-plus/icons-vue'
 const router = useRouter()
 const themeStore = useThemeStore()
 const showPopover = ref(false)
+const switcherRef = ref<HTMLElement>()
+
+function handleClickOutside(e: MouseEvent) {
+  if (switcherRef.value && !switcherRef.value.contains(e.target as Node)) {
+    showPopover.value = false
+  }
+}
+
+onMounted(() => document.addEventListener('click', handleClickOutside))
+onUnmounted(() => document.removeEventListener('click', handleClickOutside))
 
 const presetLabel = computed(() => {
   const map = { auto: '自动', light: '浅色', dark: '深色' }

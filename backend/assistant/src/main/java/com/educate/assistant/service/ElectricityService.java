@@ -574,12 +574,24 @@ public class ElectricityService {
     }
 
     /**
-     * 重新计算指定日期及次日的 consumption（充值确认后调用）
-     * 充值会影响当天和次日的计算，需要级联更新
+     * 重新计算从指定日期到最新日期的所有 consumption（充值确认/修改后调用）
+     * 修改历史充值记录会影响后续所有天的计算
      */
-    private void recalcConsumption(int roomId, LocalDate date) {
-        calcOneDay(roomId, date);
-        calcOneDay(roomId, date.plusDays(1));
+    private void recalcConsumption(int roomId, LocalDate startDate) {
+        // 查该房间最新的 record_date
+        LocalDate endDate;
+        try {
+            endDate = jdbcTemplate.queryForObject(
+                "SELECT MAX(record_date) FROM electricity_balance WHERE room_id = ?",
+                LocalDate.class, roomId);
+        } catch (Exception e) {
+            return;
+        }
+        if (endDate == null) return;
+
+        for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
+            calcOneDay(roomId, date);
+        }
     }
 
     /**
