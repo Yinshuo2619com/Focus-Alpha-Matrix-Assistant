@@ -99,8 +99,11 @@
                   余额增加 {{ r.kwh }} 度（待确认）
                 </span>
               </div>
-              <el-button v-if="!r.confirmed" type="primary" size="small" @click="openRechargeDialog(r)">
+              <el-button v-if="!r.confirmed" type="primary" size="small" @click="openRechargeDialog(r, false)">
                 补充信息
+              </el-button>
+              <el-button v-if="r.confirmed" type="default" size="small" @click="openRechargeDialog(r, true)">
+                编辑
               </el-button>
             </div>
           </div>
@@ -109,23 +112,23 @@
     </div>
 
     <!-- 充值弹窗 -->
-    <el-dialog v-model="rechargeDialogVisible" title="补充充值信息" width="400px">
+    <el-dialog v-model="rechargeDialogVisible" :title="editMode ? '修改充值信息' : '补充充值信息'" width="400px">
       <div class="recharge-form">
         <div class="form-item">
           <label>充值日期</label>
           <el-input :value="currentRecharge?.record_date" disabled />
         </div>
         <div class="form-item">
-          <label>充值度数（度）</label>
-          <el-input-number v-model="rechargeForm.kwh" :min="0.01" :step="1" :precision="2" />
+          <label>充值金额（元）</label>
+          <el-input-number v-model="rechargeForm.amount" :min="0.01" :step="10" :precision="2" />
         </div>
         <div class="form-item">
           <label>电价（元/度）</label>
           <el-input-number v-model="rechargeForm.price" :min="0.01" :step="0.01" :precision="4" />
         </div>
-        <div class="form-item" v-if="rechargeForm.kwh > 0 && rechargeForm.price > 0">
-          <label>充值金额</label>
-          <div class="calculated-amount">{{ (rechargeForm.kwh * rechargeForm.price).toFixed(2) }} 元</div>
+        <div class="form-item" v-if="rechargeForm.amount > 0 && rechargeForm.price > 0">
+          <label>充值度数</label>
+          <div class="calculated-amount">{{ (rechargeForm.amount / rechargeForm.price).toFixed(2) }} 度</div>
         </div>
       </div>
       <template #footer>
@@ -176,8 +179,9 @@ const recharges = ref<any[]>([])
 
 const rechargeDialogVisible = ref(false)
 const currentRecharge = ref<any>(null)
+const editMode = ref(false)
 const rechargeForm = ref({
-  kwh: 0,
+  amount: 0,
   price: 0.55
 })
 
@@ -469,21 +473,28 @@ const renderChart = () => {
   })
 }
 
-const openRechargeDialog = (recharge: any) => {
+const openRechargeDialog = (recharge: any, isEdit: boolean) => {
   currentRecharge.value = recharge
+  editMode.value = isEdit
   rechargeForm.value = {
-    kwh: Number(recharge.kwh),
+    amount: recharge.amount ? Number(recharge.amount) : 0,
     price: recharge.price ? Number(recharge.price) : 0.55
   }
   rechargeDialogVisible.value = true
 }
 
 const submitRecharge = async () => {
+  const { amount, price } = rechargeForm.value
+  if (!amount || !price) {
+    ElMessage.warning('请填写充值金额和电价')
+    return
+  }
+  const kwh = Number((amount / price).toFixed(2))
   try {
     const res: any = await request.post('/electricity/recharge', {
       recordDate: currentRecharge.value.record_date,
-      kwh: rechargeForm.value.kwh,
-      price: rechargeForm.value.price
+      kwh,
+      price
     })
     if (res.code === 200) {
       ElMessage.success('充值信息已更新')
