@@ -276,6 +276,15 @@ const handleRefresh = async () => {
   .side-cards {
     width: 100%;
     position: static;
+
+    // 手机端：考试卡片排在电费卡片上面
+    .side-card:first-child {
+      order: 1;
+    }
+
+    .side-card:last-child {
+      order: -1;
+    }
   }
 
   .side-card {
