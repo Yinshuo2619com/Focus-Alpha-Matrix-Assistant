@@ -23,34 +23,39 @@ public class ExamParser {
             return exams;
         }
 
-        Document doc = Jsoup.parse(html);
+        try {
+            Document doc = Jsoup.parse(html);
 
-        // 查找考试表格（根据教务系统页面结构）
-        // 注意：实际选择器需要根据教务系统页面 HTML 结构调整
-        Elements rows = doc.select("table.exam-table tbody tr, table tbody tr");
+            // 查找考试表格（根据教务系统页面结构）
+            // 注意：实际选择器需要根据教务系统页面 HTML 结构调整
+            Elements rows = doc.select("table.exam-table tbody tr, table tbody tr");
 
-        for (Element row : rows) {
-            Elements cells = row.select("td");
-            if (cells.size() < 5) continue;
+            for (Element row : rows) {
+                Elements cells = row.select("td");
+                if (cells.size() < 5) continue;
 
-            String courseName = cells.get(0).text().trim();
-            String dateTime = cells.get(1).text().trim();
-            String room = cells.get(2).text().trim();
-            String building = cells.get(3).text().trim();
-            String campus = cells.get(4).text().trim();
+                String courseName = cells.get(0).text().trim();
+                String dateTime = cells.get(1).text().trim();
+                String room = cells.get(2).text().trim();
+                String building = cells.get(3).text().trim();
+                String campus = cells.get(4).text().trim();
 
-            if (courseName.isEmpty() || dateTime.isEmpty()) {
-                continue;
+                if (courseName.isEmpty() || dateTime.isEmpty()) {
+                    continue;
+                }
+
+                Map<String, String> exam = new HashMap<>();
+                exam.put("courseName", courseName);
+                exam.put("dateTime", dateTime);
+                exam.put("room", room);
+                exam.put("building", building);
+                exam.put("campus", campus);
+
+                exams.add(exam);
             }
-
-            Map<String, String> exam = new HashMap<>();
-            exam.put("courseName", courseName);
-            exam.put("dateTime", dateTime);
-            exam.put("room", room);
-            exam.put("building", building);
-            exam.put("campus", campus);
-
-            exams.add(exam);
+        } catch (Exception e) {
+            System.out.println("[ExamParser] Failed to parse exam HTML: " + e.getMessage());
+            return new ArrayList<>();
         }
 
         return exams;
