@@ -345,6 +345,54 @@ public class EduProxyService {
     }
 
     /**
+     * 获取教务系统考试安排页面 HTML
+     * @param userId 用户ID
+     * @param schoolId 学校ID（默认 "default"）
+     * @return 考试安排页面 HTML
+     */
+    public String fetchExamPage(Long userId, String schoolId) {
+        String baseUrl = getSchoolBaseUrl(schoolId);
+        if (baseUrl == null) {
+            throw new RuntimeException("未找到学校配置: " + schoolId);
+        }
+
+        String examUrl = baseUrl + "/student/for-std/exam-arrange";
+
+        Map<String, String> cookies = getSessionCookies(userId);
+        if (cookies.isEmpty()) {
+            throw new RuntimeException("未登录教务系统，请先登录");
+        }
+
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+            headers.set("Cookie", cookies.entrySet().stream()
+                .map(e -> e.getKey() + "=" + e.getValue())
+                .collect(Collectors.joining("; ")));
+
+            HttpEntity<Void> entity = new HttpEntity<>(headers);
+            ResponseEntity<String> response = restTemplate.exchange(
+                examUrl, HttpMethod.GET, entity, String.class);
+
+            // Store any new cookies
+            Map<String, String> newCookies = extractCookies(response.getHeaders());
+            if (!newCookies.isEmpty()) {
+                storeCookies(userId, newCookies);
+            }
+
+            System.out.println("[EduProxy] Fetched exam page: " + examUrl
+                + ", status: " + response.getStatusCode()
+                + ", body length: " + (response.getBody() != null ? response.getBody().length() : 0));
+
+            return response.getBody() != null ? response.getBody() : "";
+
+        } catch (Exception e) {
+            System.out.println("[EduProxy] Failed to fetch exam page: " + e.getMessage());
+            throw new RuntimeException("获取考试安排页面失败: " + e.getMessage());
+        }
+    }
+
+    /**
      * Fetch schedule data from the educational system's JSON API.
      * The course-table page loads data via AJAX: get-data?bizTypeld=2&semesterld={semesterId}
      */
