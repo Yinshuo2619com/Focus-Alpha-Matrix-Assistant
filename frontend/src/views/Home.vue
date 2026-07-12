@@ -43,7 +43,10 @@
           </div>
         </div>
 
-        <ElectricityCard v-if="isLoggedIn" class="side-card" />
+        <div class="side-cards">
+          <ElectricityCard v-if="isLoggedIn" class="side-card" />
+          <ExamCard v-if="isLoggedIn" class="side-card" />
+        </div>
       </div>
     </div>
 
@@ -79,6 +82,7 @@ import { ElMessage } from 'element-plus'
 import StatusBar from '@/components/StatusBar.vue'
 import ScheduleGrid from '@/components/ScheduleGrid.vue'
 import ElectricityCard from '@/components/ElectricityCard.vue'
+import ExamCard from '@/components/ExamCard.vue'
 import { useScheduleStore } from '@/stores/schedule'
 import { useUserStore } from '@/stores/user'
 
@@ -165,11 +169,18 @@ const handleRefresh = async () => {
   align-items: flex-start;
 }
 
-.side-card {
+.side-cards {
   width: 280px;
   flex-shrink: 0;
   position: sticky;
   top: 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.side-card {
+  width: 100%;
 }
 
 .schedule-section {
@@ -262,9 +273,13 @@ const handleRefresh = async () => {
     flex-direction: column;
   }
 
-  .side-card {
+  .side-cards {
     width: 100%;
     position: static;
+  }
+
+  .side-card {
+    width: 100%;
   }
 
   .header-actions {
