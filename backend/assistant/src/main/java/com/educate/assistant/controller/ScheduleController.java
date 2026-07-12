@@ -10,6 +10,7 @@ import com.educate.assistant.service.ScheduleService;
 import com.educate.assistant.service.EduProxyService;
 import com.educate.assistant.service.ScheduleParser;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -38,6 +39,7 @@ public class ScheduleController {
     private final ScheduleService scheduleService;
     private final EduProxyService eduProxyService;
     private final JdbcTemplate jdbcTemplate;
+    private final StringRedisTemplate redisTemplate;
 
     @GetMapping("/current")
     public Result<Map<String, Object>> getCurrentSchedule() {
@@ -396,6 +398,11 @@ public class ScheduleController {
         request.setCourses(courses);
         request.setStartDate(startDate);
         scheduleService.saveSchedule(userId, request);
+
+        // 删除考试缓存，下次访问时会重新获取
+        String examCacheKey = "exam:" + userId;
+        redisTemplate.delete(examCacheKey);
+        System.out.println("[Schedule] Cleared exam cache for user " + userId);
 
         return Result.success("刷新成功，共 " + courses.size() + " 门课程");
 

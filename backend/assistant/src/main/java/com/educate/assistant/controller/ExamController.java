@@ -12,7 +12,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
@@ -37,25 +36,22 @@ public class ExamController {
     private static final int EXPIRE_DAYS_AFTER_LAST_EXAM = 30;
 
     @GetMapping("/list")
-    public Result<List<Map<String, String>>> getExamList(
-            @RequestParam(defaultValue = "false") boolean forceRefresh) {
+    public Result<List<Map<String, String>>> getExamList() {
         Long userId = getCurrentUserId();
         String cacheKey = CACHE_KEY_PREFIX + userId;
 
         try {
-            // 非强制刷新时，尝试从缓存读取
-            if (!forceRefresh) {
-                String cached = redisTemplate.opsForValue().get(cacheKey);
-                if (cached != null && !cached.isEmpty()) {
-                    List<Map<String, String>> exams = objectMapper.readValue(
-                        cached, new TypeReference<List<Map<String, String>>>() {});
-                    System.out.println("[Exam] Cache hit for user " + userId + ", " + exams.size() + " exams");
-                    return Result.success(exams);
-                }
+            // 尝试从缓存读取
+            String cached = redisTemplate.opsForValue().get(cacheKey);
+            if (cached != null && !cached.isEmpty()) {
+                List<Map<String, String>> exams = objectMapper.readValue(
+                    cached, new TypeReference<List<Map<String, String>>>() {});
+                System.out.println("[Exam] Cache hit for user " + userId + ", " + exams.size() + " exams");
+                return Result.success(exams);
             }
 
-            // 从教务系统获取
-            System.out.println("[Exam] Fetching from edu system for user " + userId);
+            // 缓存未命中，从教务系统获取
+            System.out.println("[Exam] Cache miss, fetching from edu system for user " + userId);
             String html = eduProxyService.fetchExamPage(userId, "default");
             List<Map<String, String>> exams = ExamParser.parse(html);
 
