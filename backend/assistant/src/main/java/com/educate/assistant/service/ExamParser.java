@@ -4,11 +4,12 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
-import org.springframework.stereotype.Component;
 
 import java.util.*;
 
-@Component
+/**
+ * 考试安排页面解析器（纯工具类，无需 Spring 管理）
+ */
 public class ExamParser {
 
     /**

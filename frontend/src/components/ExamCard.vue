@@ -42,14 +42,35 @@ const refreshing = ref(false)
 const exams = ref<Exam[]>([])
 
 /**
+ * 解析日期字符串，支持 "2026-06-29" 和 "2026年6月29日" 格式
+ */
+const parseDate = (dateStr: string): Date | null => {
+  if (!dateStr) return null
+
+  // 尝试解析 "2026-06-29" 格式
+  const standardMatch = dateStr.match(/(\d{4})-(\d{1,2})-(\d{1,2})/)
+  if (standardMatch) {
+    return new Date(`${standardMatch[1]}-${standardMatch[2].padStart(2, '0')}-${standardMatch[3].padStart(2, '0')}`)
+  }
+
+  // 尝试解析 "2026年6月29日" 格式
+  const chineseMatch = dateStr.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/)
+  if (chineseMatch) {
+    return new Date(`${chineseMatch[1]}-${chineseMatch[2].padStart(2, '0')}-${chineseMatch[3].padStart(2, '0')}`)
+  }
+
+  return null
+}
+
+/**
  * 获取考试列表中最后一天的日期
  */
 const getLastExamDate = (examList: Exam[]): Date | null => {
   if (!examList.length) return null
 
   const dates = examList
-    .map(e => new Date(e.dateTime.split(' ')[0]))
-    .filter(d => !isNaN(d.getTime()))
+    .map(e => parseDate(e.dateTime.split(' ')[0]))
+    .filter((d): d is Date => d !== null && !isNaN(d.getTime()))
 
   if (!dates.length) return null
   return new Date(Math.max(...dates.map(d => d.getTime())))
