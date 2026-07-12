@@ -27,9 +27,8 @@ public class ExamParser {
         try {
             Document doc = Jsoup.parse(html);
 
-            // 查找考试表格（根据教务系统页面结构）
-            // 注意：实际选择器需要根据教务系统页面 HTML 结构调整
-            Elements rows = doc.select("table.exam-table tbody tr, table tbody tr");
+            // 选择考试表格：table#exams
+            Elements rows = doc.select("table#exams tbody tr");
 
             for (Element row : rows) {
                 Elements cells = row.select("td");
