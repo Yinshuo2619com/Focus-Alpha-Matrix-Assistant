@@ -2,9 +2,6 @@
   <div v-if="filteredExams.length > 0" class="exam-card">
     <div class="card-title-row">
       <span class="card-title">考试安排</span>
-      <el-icon class="refresh-btn" :class="{ spinning: refreshing }" @click="handleRefresh">
-        <Refresh />
-      </el-icon>
     </div>
 
     <div v-if="loading" class="loading-wrapper">
@@ -26,7 +23,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { Loading, Refresh } from '@element-plus/icons-vue'
+import { Loading } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 
 interface Exam {
@@ -38,7 +35,6 @@ interface Exam {
 }
 
 const loading = ref(false)
-const refreshing = ref(false)
 const exams = ref<Exam[]>([])
 
 /**
@@ -113,21 +109,6 @@ const fetchExams = async () => {
   }
 }
 
-const handleRefresh = async () => {
-  if (refreshing.value) return
-  refreshing.value = true
-  try {
-    const res: any = await request.get('/exam/list', { params: { forceRefresh: true } })
-    if (res.code === 200) {
-      exams.value = res.data || []
-    }
-  } catch {
-    // ignore
-  } finally {
-    refreshing.value = false
-  }
-}
-
 onMounted(fetchExams)
 </script>
 
@@ -151,28 +132,6 @@ onMounted(fetchExams)
   font-size: 16px;
   font-weight: 600;
   color: var(--text-primary);
-}
-
-.refresh-btn {
-  font-size: 16px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: color 0.2s, transform 0.3s;
-
-  &:hover {
-    color: var(--accent);
-  }
-
-  &.spinning {
-    animation: spin 0.8s linear infinite;
-    color: var(--accent);
-    pointer-events: none;
-  }
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
 }
 
 .loading-wrapper {
