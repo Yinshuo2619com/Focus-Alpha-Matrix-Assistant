@@ -117,7 +117,7 @@ const handleRefresh = async () => {
   if (refreshing.value) return
   refreshing.value = true
   try {
-    const res: any = await request.get('/exam/list')
+    const res: any = await request.get('/exam/list', { params: { forceRefresh: true } })
     if (res.code === 200) {
       exams.value = res.data || []
     }
