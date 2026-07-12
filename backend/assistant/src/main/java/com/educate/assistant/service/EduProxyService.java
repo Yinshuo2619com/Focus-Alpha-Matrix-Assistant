@@ -384,6 +384,35 @@ public class EduProxyService {
                 + ", status: " + response.getStatusCode()
                 + ", body length: " + (response.getBody() != null ? response.getBody().length() : 0));
 
+            // 处理重定向（302 FOUND）
+            if (response.getStatusCode().is3xxRedirection()) {
+                String location = response.getHeaders().getFirst(HttpHeaders.LOCATION);
+                if (location != null && !location.isEmpty()) {
+                    // 如果是相对路径，补全为绝对路径
+                    if (location.startsWith("/")) {
+                        location = baseUrl + location;
+                    }
+                    System.out.println("[EduProxy] Following redirect to: " + location);
+
+                    // 跟随重定向
+                    headers.set("Cookie", cookies.entrySet().stream()
+                        .map(e -> e.getKey() + "=" + e.getValue())
+                        .collect(Collectors.joining("; ")));
+                    entity = new HttpEntity<>(headers);
+                    response = restTemplate.exchange(location, HttpMethod.GET, entity, String.class);
+
+                    // 更新 cookies
+                    newCookies = extractCookies(response.getHeaders());
+                    if (!newCookies.isEmpty()) {
+                        storeCookies(userId, newCookies);
+                    }
+
+                    System.out.println("[EduProxy] Redirect response: " + location
+                        + ", status: " + response.getStatusCode()
+                        + ", body length: " + (response.getBody() != null ? response.getBody().length() : 0));
+                }
+            }
+
             return response.getBody() != null ? response.getBody() : "";
 
         } catch (Exception e) {
