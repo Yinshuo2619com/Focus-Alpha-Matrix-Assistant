@@ -3,12 +3,15 @@
 server.md
 news.md
 new.md
+开发笔记.md
+电费api.md
 
 # IDE 和工具配置
 .claude/
 .superpowers/
 .vscode/
 docs/
+CLAUDE.md
 
 # 敏感配置
 backend/assistant/src/main/resources/application-prod.yml
