@@ -24,6 +24,20 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url))
     }
   },
+  build: {
+    rolldownOptions: {
+      output: {
+        advancedChunks: {
+          groups: [
+            { test: /node_modules\/element-plus/, name: 'element-plus' },
+            { test: /node_modules\/@element-plus/, name: 'element-plus' },
+            { test: /node_modules\/echarts/, name: 'echarts' },
+            { test: /node_modules\/axios/, name: 'axios' }
+          ]
+        }
+      }
+    }
+  },
   server: {
     proxy: {
       '/api': {
