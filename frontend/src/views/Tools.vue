@@ -560,6 +560,11 @@ onMounted(() => {
 
 .empty-state {
   padding: 40px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
 }
 
 .recommend-grid {
@@ -753,11 +758,14 @@ onMounted(() => {
   .tools-container {
     padding: 12px;
     flex-direction: column;
+    align-items: stretch;
   }
 
   .tab-bar {
     flex-direction: row;
     width: 100%;
+    margin-left: 0;
+    position: static;
   }
 
   .tab-item {
@@ -782,6 +790,8 @@ onMounted(() => {
 
   .tab-content {
     border-radius: 12px;
+    max-width: 100%;
+    margin: 0;
   }
 
   .recommend-grid {
