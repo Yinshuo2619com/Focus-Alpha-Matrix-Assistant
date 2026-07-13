@@ -221,6 +221,11 @@ const handleRefresh = async () => {
 
 .empty-schedule {
   padding: 20px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
 }
 
 .icp-footer {
@@ -271,6 +276,11 @@ const handleRefresh = async () => {
 
   .main-content {
     flex-direction: column;
+    align-items: stretch;
+  }
+
+  .schedule-section {
+    width: 100%;
   }
 
   .side-cards {
