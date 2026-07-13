@@ -146,7 +146,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import StatusBar from '@/components/StatusBar.vue'
 import { useUserStore } from '@/stores/user'
 import request from '@/utils/request'
-import * as echarts from 'echarts'
+import echarts from '@/utils/echarts'
 import { useThemeStore } from '@/stores/theme'
 
 const themeStore = useThemeStore()
