@@ -98,4 +98,8 @@ const selectWeek = (week: number) => {
 .week-item.end {
   color: #909399;
 }
+
+.week-item.active.special {
+  color: white;
+}
 </style>
