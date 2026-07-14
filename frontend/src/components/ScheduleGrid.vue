@@ -1,10 +1,6 @@
 <template>
   <div class="schedule-grid-wrapper">
-    <div class="week-selector">
-      <el-select v-model="currentWeek" size="small" placeholder="选择周次">
-        <el-option v-for="w in availableWeeks" :key="w" :label="`第${w}周`" :value="w" />
-      </el-select>
-    </div>
+    <WeekSelector />
 
     <div class="schedule-table-container">
       <table class="schedule-table">
@@ -44,7 +40,10 @@
 
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue'
+import { storeToRefs } from 'pinia'
 import type { CourseEntry } from '@/types/schedule'
+import { useScheduleStore } from '@/stores/schedule'
+import WeekSelector from '@/components/WeekSelector.vue'
 
 const props = defineProps<{
   courses: CourseEntry[]
@@ -63,7 +62,9 @@ const weekdays = [
 ]
 
 const sections = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
-const currentWeek = ref(1)
+
+const scheduleStore = useScheduleStore()
+const { currentWeek } = storeToRefs(scheduleStore)
 
 const parseWeeks = (weeks: string): number[] => {
   const result: number[] = []

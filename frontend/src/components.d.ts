@@ -50,6 +50,7 @@ declare module 'vue' {
     StatusbarPanel: typeof import('./components/customize/StatusbarPanel.vue')['default']
     ThemePanel: typeof import('./components/customize/ThemePanel.vue')['default']
     ThemeSwitcher: typeof import('./components/ThemeSwitcher.vue')['default']
+    WeekSelector: typeof import('./components/WeekSelector.vue')['default']
   }
   export interface GlobalDirectives {
     vLoading: typeof import('element-plus/es')['ElLoadingDirective']
