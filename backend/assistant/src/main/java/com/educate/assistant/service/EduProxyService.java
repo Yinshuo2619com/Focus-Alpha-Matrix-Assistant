@@ -489,6 +489,122 @@ public class EduProxyService {
     }
 
     /**
+     * Get the semesterId for a specific semester from the course-table HTML page.
+     * Parses the semesters JSON embedded in the page's JavaScript.
+     * @param semester the semester string like "2026-2027-1"
+     */
+    public int getSemesterId(Long userId, String schoolId, String semester) {
+        return ((Number) getSemesterInfo(userId, schoolId, semester).get("semesterId")).intValue();
+    }
+
+    /**
+     * Get semester info (semesterId + startDate) for a specific semester from the course-table HTML page.
+     * Returns a map with "semesterId" (int) and "startDate" (String).
+     */
+    public java.util.Map<String, Object> getSemesterInfo(Long userId, String schoolId, String semester) {
+        String html = fetchSchedulePage(userId, schoolId);
+        java.util.List<java.util.Map<String, Object>> semesters = parseSemestersFromHtml(html);
+        if (semesters != null) {
+            for (java.util.Map<String, Object> sem : semesters) {
+                Object nameZh = sem.get("nameZh");
+                if (semester.equals(nameZh)) {
+                    java.util.Map<String, Object> result = new java.util.HashMap<>();
+                    result.put("semesterId", ((Number) sem.get("id")).intValue());
+                    result.put("startDate", sem.get("startDate"));
+                    System.out.println("[EduProxy] Found semester info: id=" + sem.get("id") + ", startDate=" + sem.get("startDate") + " for " + semester);
+                    return result;
+                }
+            }
+            System.out.println("[EduProxy] Semester not found in HTML list: " + semester);
+        }
+        System.out.println("[EduProxy] Warning: Could not extract semester info from HTML");
+        java.util.Map<String, Object> fallback = new java.util.HashMap<>();
+        fallback.put("semesterId", 307);
+        fallback.put("startDate", null);
+        return fallback;
+    }
+
+    /**
+     * Get the current semester info from the course-table HTML page.
+     * Returns a map with "semester" (nameZh), "semesterId" (id), "startDate".
+     * Logic: 1) semester currently active (startDate <= today <= endDate)
+     *        2) next upcoming semester (earliest startDate > today)
+     *        3) latest semester overall as fallback
+     */
+    public java.util.Map<String, Object> getCurrentSemesterInfo(Long userId, String schoolId) {
+        String html = fetchSchedulePage(userId, schoolId);
+        java.util.List<java.util.Map<String, Object>> semesters = parseSemestersFromHtml(html);
+        if (semesters != null) {
+            java.time.LocalDate today = java.time.LocalDate.now();
+            java.util.Map<String, Object> active = null;  // currently ongoing
+            java.util.Map<String, Object> upcoming = null; // next to start
+            java.util.Map<String, Object> latest = null;   // fallback
+
+            for (java.util.Map<String, Object> sem : semesters) {
+                Object startObj = sem.get("startDate");
+                Object endObj = sem.get("endDate");
+                if (!(startObj instanceof String) || !(endObj instanceof String)) continue;
+                try {
+                    java.time.LocalDate start = java.time.LocalDate.parse((String) startObj);
+                    java.time.LocalDate end = java.time.LocalDate.parse((String) endObj);
+
+                    // Track latest overall
+                    if (latest == null || start.isAfter(java.time.LocalDate.parse((String) latest.get("startDate")))) {
+                        latest = sem;
+                    }
+
+                    // Currently active: startDate <= today <= endDate
+                    if (!start.isAfter(today) && !end.isBefore(today)) {
+                        if (active == null || start.isAfter(java.time.LocalDate.parse((String) active.get("startDate")))) {
+                            active = sem;
+                        }
+                    }
+
+                    // Upcoming: startDate > today (pick the nearest one)
+                    if (start.isAfter(today)) {
+                        if (upcoming == null || start.isBefore(java.time.LocalDate.parse((String) upcoming.get("startDate")))) {
+                            upcoming = sem;
+                        }
+                    }
+                } catch (Exception ignored) {}
+            }
+
+            java.util.Map<String, Object> best = active != null ? active : (upcoming != null ? upcoming : latest);
+            if (best != null) {
+                java.util.Map<String, Object> result = new java.util.HashMap<>();
+                result.put("semester", best.get("nameZh"));
+                result.put("semesterId", ((Number) best.get("id")).intValue());
+                result.put("startDate", best.get("startDate"));
+                System.out.println("[EduProxy] Current semester: " + best.get("nameZh")
+                    + ", id=" + best.get("id") + ", startDate=" + best.get("startDate"));
+                return result;
+            }
+        }
+        return null;
+    }
+
+    public java.util.List<java.util.Map<String, Object>> parseSemestersFromHtml(String html) {
+        // Match: var semesters = JSON.parse(\n      '[...]')  — allow whitespace/newline after (
+        java.util.regex.Pattern p = java.util.regex.Pattern.compile("var\\s+semesters\\s*=\\s*JSON\\.parse\\(\\s*'(.+?)'\\s*\\)", java.util.regex.Pattern.DOTALL);
+        java.util.regex.Matcher m = p.matcher(html);
+        if (m.find()) {
+            String json = m.group(1);
+            // Unescape JavaScript single-quoted string: \' → ', \" → ", \\ → \
+            json = json.replace("\\'", "'").replace("\\\"", "\"").replace("\\\\", "\\");
+            System.out.println("[EduProxy] Parsed semesters JSON, length: " + json.length());
+            try {
+                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                return mapper.readValue(json, new com.fasterxml.jackson.core.type.TypeReference<java.util.List<java.util.Map<String, Object>>>() {});
+            } catch (Exception e) {
+                System.out.println("[EduProxy] Failed to parse semesters JSON: " + e.getMessage());
+            }
+        } else {
+            System.out.println("[EduProxy] semesters regex did not match, html length: " + html.length());
+        }
+        return null;
+    }
+
+    /**
      * Fetch schedule datum from the educational system's datum API.
      * POST /student/ws/schedule-table/datum with lessonIds and stdPersonId.
      * Returns scheduleList with actual date and weekIndex per lesson.
