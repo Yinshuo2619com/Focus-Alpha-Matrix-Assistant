@@ -84,6 +84,254 @@ public class ScheduleController {
         }
     }
 
+    @GetMapping("/history")
+    public Result<Map<String, Object>> getHistoricalSchedule(
+            @RequestParam String semester,
+            @RequestParam int semesterId) {
+        Long userId = getCurrentUserId();
+
+        // 先查本地数据库
+        List<Map<String, Object>> schedules = jdbcTemplate.queryForList(
+            "SELECT * FROM schedule WHERE user_id = ? AND semester = ?",
+            userId, semester);
+
+        if (!schedules.isEmpty()) {
+            Map<String, Object> schedule = schedules.get(0);
+            Long scheduleId = ((Number) schedule.get("id")).longValue();
+            List<Map<String, Object>> courses = jdbcTemplate.queryForList(
+                "SELECT * FROM course_entry WHERE schedule_id = ? ORDER BY day_of_week, start_section",
+                scheduleId);
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("schedule", schedule);
+            result.put("courses", courses);
+            return Result.success(result);
+        }
+
+        // 本地没有，从教务系统获取
+        Map<String, String> cookies = eduProxyService.getSessionCookies(userId);
+        if (cookies.isEmpty()) {
+            return Result.error(400, "未登录教务系统，请先登录");
+        }
+
+        try {
+            // 获取学期信息（主要是 startDate）
+            Map<String, Object> semesterInfo = eduProxyService.getSemesterInfo(userId, "default", semester);
+            String eduStartDate = (semesterInfo != null) ? (String) semesterInfo.get("startDate") : null;
+
+            // 从教务系统获取课表数据
+            String jsonData = eduProxyService.fetchScheduleDataApi(userId, "default", semesterId);
+            ObjectMapper mapper = new ObjectMapper();
+            Map<String, Object> getDataRoot = mapper.readValue(jsonData, new TypeReference<Map<String, Object>>() {});
+
+            // 提取免听课程 ID
+            Set<Integer> notAttendIds = new HashSet<>();
+            Object notAttendObj = getDataRoot.get("notAttendLessonIds");
+            if (notAttendObj instanceof List) {
+                for (Object id : (List<?>) notAttendObj) {
+                    if (id instanceof Number) notAttendIds.add(((Number) id).intValue());
+                }
+            }
+
+            // 提取课程 ID 列表
+            List<Integer> lessonIds = new ArrayList<>();
+            Object lessonsObj = getDataRoot.get("lessons");
+            if (lessonsObj instanceof List) {
+                for (Object lesson : (List<?>) lessonsObj) {
+                    if (lesson instanceof Map) {
+                        Object id = ((Map<?, ?>) lesson).get("id");
+                        if (id instanceof Number) lessonIds.add(((Number) id).intValue());
+                    }
+                }
+            }
+            if (lessonIds.isEmpty()) {
+                return Result.error(400, "该学期没有课程数据");
+            }
+
+            // 获取学生实际课程安排
+            int stdPersonId = eduProxyService.getStdPersonId(userId, "default");
+            String datumJson = eduProxyService.fetchDatumApi(userId, "default", lessonIds, stdPersonId);
+            Map<String, Object> datumRoot = mapper.readValue(datumJson, new TypeReference<Map<String, Object>>() {});
+
+            // 收集学生实际的 (lessonId, weekday) 组合 + 教师/教室信息
+            Set<String> studentSlots = new HashSet<>();
+            Map<String, String[]> slotInfo = new HashMap<>();
+            String startDate = null;
+            Object resultObj = datumRoot.get("result");
+            if (resultObj instanceof Map) {
+                Object scheduleListObj = ((Map<?, ?>) resultObj).get("scheduleList");
+                if (scheduleListObj instanceof List) {
+                    for (Object item : (List<?>) scheduleListObj) {
+                        if (item instanceof Map) {
+                            Map<?, ?> e = (Map<?, ?>) item;
+                            Object lidObj = e.get("lessonId");
+                            Object wdObj = e.get("weekday");
+                            if (lidObj instanceof Number && wdObj instanceof Number) {
+                                int lid = ((Number) lidObj).intValue();
+                                int wd = ((Number) wdObj).intValue();
+                                String key = lid + "-" + wd;
+                                studentSlots.add(key);
+
+                                if (!slotInfo.containsKey(key)) {
+                                    String teacher = e.get("personName") != null ? e.get("personName").toString() : "";
+                                    String location = "";
+                                    Object roomObj = e.get("room");
+                                    if (roomObj instanceof Map) {
+                                        Map<?, ?> room = (Map<?, ?>) roomObj;
+                                        String roomName = room.get("nameZh") != null ? room.get("nameZh").toString() : "";
+                                        String campus = "";
+                                        Object building = room.get("building");
+                                        if (building instanceof Map) {
+                                            Object campusObj = ((Map<?, ?>) building).get("campus");
+                                            if (campusObj instanceof Map) {
+                                                campus = ((Map<?, ?>) campusObj).get("nameZh") != null
+                                                    ? ((Map<?, ?>) campusObj).get("nameZh").toString() : "";
+                                            }
+                                        }
+                                        location = (campus + " " + roomName).trim();
+                                    }
+                                    slotInfo.put(key, new String[]{teacher, location});
+                                }
+                            }
+                            Object weekIdx = e.get("weekIndex");
+                            Object dateObj = e.get("date");
+                            if (weekIdx instanceof Number && ((Number) weekIdx).intValue() == 1
+                                && dateObj instanceof String) {
+                                String d = (String) dateObj;
+                                if (!d.isEmpty() && (startDate == null || d.compareTo(startDate) < 0)) {
+                                    startDate = d;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 从文本提取节次，教师/教室从 datum API 取
+            List<CourseEntryDTO> courses = new ArrayList<>();
+            if (lessonsObj instanceof List) {
+                for (Object lesson : (List<?>) lessonsObj) {
+                    if (!(lesson instanceof Map)) continue;
+                    Map<?, ?> lm = (Map<?, ?>) lesson;
+                    Object idObj = lm.get("id");
+                    if (!(idObj instanceof Number)) continue;
+                    int lessonId = ((Number) idObj).intValue();
+
+                    if (notAttendIds.contains(lessonId)) continue;
+
+                    String courseName = null;
+                    Object courseObj = lm.get("course");
+                    if (courseObj instanceof Map) {
+                        Object n = ((Map<?, ?>) courseObj).get("nameZh");
+                        if (n != null) courseName = n.toString();
+                    }
+                    if (courseName == null) {
+                        Object n = lm.get("nameZh");
+                        if (n != null) courseName = n.toString();
+                    }
+                    if (courseName == null) continue;
+
+                    Object scheduleTextObj = lm.get("scheduleText");
+                    if (!(scheduleTextObj instanceof Map)) continue;
+                    Object dtObj = ((Map<?, ?>) scheduleTextObj).get("dateTimeText");
+                    String fullText = null;
+                    if (dtObj instanceof Map) {
+                        Object t = ((Map<?, ?>) dtObj).get("textZh");
+                        if (t != null) fullText = t.toString();
+                    }
+                    if (fullText == null || fullText.isBlank()) continue;
+
+                    String[] entries = fullText.split(";\\s*");
+                    for (String entry : entries) {
+                        entry = entry.trim();
+                        if (entry.isEmpty()) continue;
+
+                        Matcher m = ENTRY_PATTERN.matcher(entry);
+                        if (!m.find()) continue;
+
+                        Integer dayOfWeek = DAY_MAP.get(m.group(3));
+                        if (dayOfWeek == null) continue;
+
+                        String slotKey = lessonId + "-" + dayOfWeek;
+                        if (!studentSlots.contains(slotKey)) continue;
+
+                        Integer startSection = chineseToInt(m.group(4));
+                        Integer endSection = chineseToInt(m.group(5));
+                        if (startSection == null || endSection == null) continue;
+
+                        String weeks = parseWeekString(m.group(2));
+
+                        String[] info = slotInfo.getOrDefault(slotKey, new String[]{"", ""});
+
+                        CourseEntryDTO dto = new CourseEntryDTO();
+                        dto.setCourseName(courseName);
+                        dto.setTeacher(info[0]);
+                        dto.setLocation(info[1]);
+                        dto.setDayOfWeek(dayOfWeek);
+                        dto.setStartSection(startSection);
+                        dto.setEndSection(endSection);
+                        dto.setWeeks(weeks);
+                        courses.add(dto);
+                    }
+                }
+            }
+
+            // 去重合并
+            Map<String, CourseEntryDTO> merged = new LinkedHashMap<>();
+            for (CourseEntryDTO dto : courses) {
+                String key = dto.getCourseName() + "|" + dto.getTeacher() + "|"
+                    + dto.getDayOfWeek() + "|" + dto.getStartSection() + "|" + dto.getEndSection();
+                CourseEntryDTO existing = merged.get(key);
+                if (existing == null) {
+                    merged.put(key, dto);
+                } else {
+                    Set<Integer> allWeeks = new TreeSet<>();
+                    for (String w : existing.getWeeks().split(",")) {
+                        w = w.trim();
+                        if (!w.isEmpty()) allWeeks.add(Integer.parseInt(w));
+                    }
+                    for (String w : dto.getWeeks().split(",")) {
+                        w = w.trim();
+                        if (!w.isEmpty()) allWeeks.add(Integer.parseInt(w));
+                    }
+                    existing.setWeeks(allWeeks.stream().map(String::valueOf).collect(Collectors.joining(",")));
+                }
+            }
+            courses = new ArrayList<>(merged.values());
+
+            if (courses.isEmpty()) {
+                return Result.error(400, "该学期没有课程数据");
+            }
+
+            // 优先使用教务系统学期配置的 startDate
+            String finalStartDate = (eduStartDate != null && !eduStartDate.isEmpty()) ? eduStartDate : startDate;
+
+            // 保存到数据库
+            SaveScheduleRequest request = new SaveScheduleRequest();
+            request.setSemester(semester);
+            request.setCourses(courses);
+            request.setStartDate(finalStartDate);
+            scheduleService.saveSchedule(userId, request);
+
+            // 查询刚保存的数据返回
+            List<Map<String, Object>> savedSchedules = jdbcTemplate.queryForList(
+                "SELECT * FROM schedule WHERE user_id = ? AND semester = ?",
+                userId, semester);
+            Map<String, Object> schedule = savedSchedules.get(0);
+            Long scheduleId = ((Number) schedule.get("id")).longValue();
+            List<Map<String, Object>> savedCourses = jdbcTemplate.queryForList(
+                "SELECT * FROM course_entry WHERE schedule_id = ? ORDER BY day_of_week, start_section",
+                scheduleId);
+
+            Map<String, Object> resp = new HashMap<>();
+            resp.put("schedule", schedule);
+            resp.put("courses", savedCourses);
+            return Result.success(resp);
+        } catch (Exception e) {
+            return Result.error(500, "获取历史课表失败: " + e.getMessage());
+        }
+    }
+
     @PostMapping("/login")
     public Result<String> loginToEduSystem(@RequestBody EduLoginRequest request) {
         Long userId = getCurrentUserId();
