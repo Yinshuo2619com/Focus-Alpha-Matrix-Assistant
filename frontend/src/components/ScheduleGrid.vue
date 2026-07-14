@@ -192,9 +192,12 @@ const isCellHidden = (day: number, section: number): boolean => {
 const expandConflict = (day: number, section: number) => {
   const courses = getCourses(day, section)
   ElMessageBox.alert(
-    courses.map(c => `${c.courseName} - ${c.teacher} - ${c.location}`).join('\n'),
-    '课程冲突',
-    { confirmButtonText: '确定' }
+    courses.map(c => `${c.courseName} - ${c.teacher} - ${c.location}`).join('<br>'),
+    '课程冲突详情',
+    {
+      confirmButtonText: '确定',
+      dangerouslyUseHTMLString: true
+    }
   )
 }
 
