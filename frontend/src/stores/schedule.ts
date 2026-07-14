@@ -3,6 +3,11 @@ import { ref } from 'vue'
 import request from '@/utils/request'
 import type { ScheduleData, CourseEntry } from '@/types/schedule'
 
+/** 预览周次：表示"仅预览，不持久化" */
+export const PREVIEW_WEEK = -1
+/** 结束周次：表示"已结课/无更多数据" */
+export const END_WEEK = -2
+
 export const useScheduleStore = defineStore('schedule', () => {
   const scheduleData = ref<ScheduleData>({ schedule: null, courses: [] })
   const loading = ref(false)
