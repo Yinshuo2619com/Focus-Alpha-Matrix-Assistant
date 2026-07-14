@@ -48,6 +48,42 @@ public class ScheduleController {
         return Result.success(data);
     }
 
+    @GetMapping("/semesters")
+    public Result<List<Map<String, Object>>> getSemesterList() {
+        Long userId = getCurrentUserId();
+
+        // 检查教务系统session
+        Map<String, String> cookies = eduProxyService.getSessionCookies(userId);
+        if (cookies.isEmpty()) {
+            return Result.error(400, "未登录教务系统，请先登录");
+        }
+
+        try {
+            // 从教务系统获取学期列表
+            String html = eduProxyService.fetchSchedulePage(userId, "default");
+            List<Map<String, Object>> semesters = eduProxyService.parseSemestersFromHtml(html);
+
+            if (semesters == null || semesters.isEmpty()) {
+                return Result.error(500, "无法获取学期列表");
+            }
+
+            // 获取用户已导入的学期
+            List<String> importedSemesters = jdbcTemplate.queryForList(
+                "SELECT DISTINCT semester FROM schedule WHERE user_id = ?",
+                String.class, userId);
+
+            // 标记已导入的学期
+            for (Map<String, Object> sem : semesters) {
+                String nameZh = (String) sem.get("nameZh");
+                sem.put("imported", importedSemesters.contains(nameZh));
+            }
+
+            return Result.success(semesters);
+        } catch (Exception e) {
+            return Result.error(500, "获取学期列表失败: " + e.getMessage());
+        }
+    }
+
     @PostMapping("/login")
     public Result<String> loginToEduSystem(@RequestBody EduLoginRequest request) {
         Long userId = getCurrentUserId();
@@ -185,7 +221,7 @@ public class ScheduleController {
             return Result.error(400, "未登录教务系统，请先登录课表导入页面");
         }
 
-        // 获取当前学期的 schedule
+        // 获取当前学期的 schedule（仅用于检查是否存在）
         Map<String, Object> data = scheduleService.getScheduleWithCourses(userId);
         @SuppressWarnings("unchecked")
         Map<String, Object> schedule = (Map<String, Object>) data.get("schedule");
@@ -193,11 +229,19 @@ public class ScheduleController {
             return Result.error(400, "暂无课表数据，请先导入课表");
         }
 
-        String semester = (String) schedule.get("semester");
-
         try {
+        // Step 0: 从教务系统获取当前学期信息
+        Map<String, Object> semesterInfo = eduProxyService.getCurrentSemesterInfo(userId, "default");
+        if (semesterInfo == null) {
+            return Result.error(400, "无法获取当前学期信息");
+        }
+        String semester = (String) semesterInfo.get("semester");
+        int semesterId = (int) semesterInfo.get("semesterId");
+        String eduStartDate = (String) semesterInfo.get("startDate");
+        System.out.println("[Schedule] Using semesterId: " + semesterId + ", startDate: " + eduStartDate + " for semester: " + semester);
+
         // Step 1: 从 get-data API 获取 lessons 列表
-        String jsonData = eduProxyService.fetchScheduleDataApi(userId, "default", 307);
+        String jsonData = eduProxyService.fetchScheduleDataApi(userId, "default", semesterId);
         ObjectMapper mapper = new ObjectMapper();
         Map<String, Object> getDataRoot = mapper.readValue(jsonData, new TypeReference<Map<String, Object>>() {});
 
@@ -390,13 +434,15 @@ public class ScheduleController {
             return Result.error(400, "未解析到课程数据");
         }
 
-        System.out.println("[Schedule] Refreshed: " + courses.size() + " courses, startDate: " + startDate);
+        // 优先使用教务系统学期配置的 startDate，其次用 datum API 提取的
+        String finalStartDate = (eduStartDate != null && !eduStartDate.isEmpty()) ? eduStartDate : startDate;
+        System.out.println("[Schedule] Refreshed: " + courses.size() + " courses, startDate: " + finalStartDate);
 
         // 保存到数据库
         SaveScheduleRequest request = new SaveScheduleRequest();
         request.setSemester(semester);
         request.setCourses(courses);
-        request.setStartDate(startDate);
+        request.setStartDate(finalStartDate);
         scheduleService.saveSchedule(userId, request);
 
         // 删除考试缓存，下次访问时会重新获取
@@ -410,6 +456,42 @@ public class ScheduleController {
             System.out.println("[Schedule] Refresh failed: " + e.getMessage());
             e.printStackTrace();
             return Result.error(500, "刷新失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 测试接口：查询教务系统指定学期的课表数据（用于验证是否支持历史学期查询）
+     */
+    @GetMapping("/test-historical")
+    public Result<Map<String, Object>> testHistoricalSchedule(@RequestParam int semesterId) {
+        Long userId = getCurrentUserId();
+
+        Map<String, String> cookies = eduProxyService.getSessionCookies(userId);
+        if (cookies.isEmpty()) {
+            return Result.error(400, "未登录教务系统，请先登录");
+        }
+
+        try {
+            String jsonData = eduProxyService.fetchScheduleDataApi(userId, "default", semesterId);
+            ObjectMapper mapper = new ObjectMapper();
+            Map<String, Object> data = mapper.readValue(jsonData, new TypeReference<Map<String, Object>>() {});
+
+            // 提取课程数量
+            int lessonCount = 0;
+            Object lessonsObj = data.get("lessons");
+            if (lessonsObj instanceof List) {
+                lessonCount = ((List<?>) lessonsObj).size();
+            }
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("semesterId", semesterId);
+            result.put("lessonCount", lessonCount);
+            result.put("success", lessonCount > 0);
+            result.put("rawData", data);
+
+            return Result.success(result);
+        } catch (Exception e) {
+            return Result.error(500, "查询失败: " + e.getMessage());
         }
     }
 
