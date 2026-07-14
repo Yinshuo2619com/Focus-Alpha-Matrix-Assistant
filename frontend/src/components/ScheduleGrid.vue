@@ -2,7 +2,12 @@
   <div class="schedule-grid-wrapper">
     <WeekSelector />
 
-    <div class="schedule-table-container">
+    <!-- 结束模式显示空状态 -->
+    <div v-if="currentWeek === END_WEEK" class="empty-state">
+      <el-empty description="课程结束" />
+    </div>
+
+    <div v-else class="schedule-table-container">
       <table class="schedule-table">
         <thead>
           <tr>
@@ -20,14 +25,52 @@
                 class="course-cell"
                 :rowspan="getCellRowspan(day.value, section)"
               >
+                <!-- 单门课程：全宽显示 -->
                 <div
-                  v-if="getCourse(day.value, section)"
+                  v-if="getCourses(day.value, section).length === 1"
                   class="course-block"
                   :style="{ backgroundColor: getCourse(day.value, section)?.color || '#409EFF' }"
                 >
                   <div class="course-name">{{ getCourse(day.value, section)?.courseName }}</div>
                   <div class="course-detail">{{ getCourse(day.value, section)?.teacher }}</div>
                   <div class="course-detail">{{ getCourse(day.value, section)?.location }}</div>
+                </div>
+
+                <!-- 两门冲突课程：并排显示 -->
+                <div
+                  v-else-if="getCourses(day.value, section).length === 2"
+                  class="course-conflict-pair"
+                >
+                  <div
+                    v-for="course in getCourses(day.value, section)"
+                    :key="course.id"
+                    class="course-block course-block-half"
+                    :style="{ backgroundColor: course.color || '#409EFF' }"
+                  >
+                    <div class="course-name">{{ course.courseName }}</div>
+                    <div class="course-detail">{{ course.teacher }}</div>
+                    <div class="course-detail">{{ course.location }}</div>
+                  </div>
+                </div>
+
+                <!-- 超过两门冲突课程：第一门 + 折叠指示器 -->
+                <div
+                  v-else-if="getCourses(day.value, section).length > 2"
+                  class="course-conflict-pair"
+                >
+                  <div
+                    class="course-block course-block-half"
+                    :style="{ backgroundColor: getCourses(day.value, section)[0].color || '#409EFF' }"
+                  >
+                    <div class="course-name">{{ getCourses(day.value, section)[0].courseName }}</div>
+                    <div class="course-detail">{{ getCourses(day.value, section)[0].teacher }}</div>
+                  </div>
+                  <div
+                    class="course-block course-block-half conflict-fold"
+                    @click="expandConflict(day.value, section)"
+                  >
+                    +{{ getCourses(day.value, section).length - 1 }}
+                  </div>
                 </div>
               </td>
             </template>
@@ -41,6 +84,7 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
+import { ElMessageBox } from 'element-plus'
 import type { CourseEntry } from '@/types/schedule'
 import { useScheduleStore } from '@/stores/schedule'
 import WeekSelector from '@/components/WeekSelector.vue'
@@ -65,6 +109,7 @@ const sections = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 
 const scheduleStore = useScheduleStore()
 const { currentWeek } = storeToRefs(scheduleStore)
+const { PREVIEW_WEEK, END_WEEK } = scheduleStore
 
 const parseWeeks = (weeks: string): number[] => {
   const result: number[] = []
@@ -90,25 +135,40 @@ const parseWeeks = (weeks: string): number[] => {
   return result
 }
 
-const activeCourses = computed(() => {
-  return props.courses.filter(c => {
-    const weeks = parseWeeks(c.weeks)
-    return weeks.includes(currentWeek.value)
-  })
+const filteredCourses = computed(() => {
+  if (currentWeek.value === PREVIEW_WEEK) {
+    // 预览模式：显示所有课程
+    return props.courses
+  } else if (currentWeek.value === END_WEEK) {
+    // 结束模式：不显示任何课程
+    return []
+  } else {
+    // 普通模式：按周数过滤
+    return props.courses.filter(c => {
+      const weeks = parseWeeks(c.weeks)
+      return weeks.includes(currentWeek.value)
+    })
+  }
 })
 
 const courseMap = computed(() => {
-  const map = new Map<string, CourseEntry>()
-  activeCourses.value.forEach(c => {
+  const map = new Map<string, CourseEntry[]>()
+  filteredCourses.value.forEach(c => {
     for (let s = c.startSection; s <= c.endSection; s++) {
-      map.set(`${c.dayOfWeek}-${s}`, c)
+      const key = `${c.dayOfWeek}-${s}`
+      if (!map.has(key)) map.set(key, [])
+      map.get(key)!.push(c)
     }
   })
   return map
 })
 
 const getCourse = (day: number, section: number): CourseEntry | undefined => {
-  return courseMap.value.get(`${day}-${section}`)
+  return courseMap.value.get(`${day}-${section}`)?.[0]
+}
+
+const getCourses = (day: number, section: number): CourseEntry[] => {
+  return courseMap.value.get(`${day}-${section}`) || []
 }
 
 // 获取某个课程占据的连续节次数（从 startSection 开始）
@@ -128,6 +188,16 @@ const isCellHidden = (day: number, section: number): boolean => {
   return section > course.startSection
 }
 
+// 展开冲突课程对话框
+const expandConflict = (day: number, section: number) => {
+  const courses = getCourses(day, section)
+  ElMessageBox.alert(
+    courses.map(c => `${c.courseName} - ${c.teacher} - ${c.location}`).join('\n'),
+    '课程冲突',
+    { confirmButtonText: '确定' }
+  )
+}
+
 const availableWeeks = computed(() => {
   const allWeeks = new Set<number>()
   props.courses.forEach(c => parseWeeks(c.weeks).forEach(w => allWeeks.add(w)))
@@ -138,7 +208,7 @@ const availableWeeks = computed(() => {
 const isMobile = ref(window.innerWidth <= 768)
 const visibleWeekdays = computed(() => {
   if (!isMobile.value) return weekdays
-  const activeDays = new Set(activeCourses.value.map(c => c.dayOfWeek))
+  const activeDays = new Set(filteredCourses.value.map(c => c.dayOfWeek))
   return weekdays.filter(d => activeDays.has(d.value))
 })
 
@@ -275,6 +345,40 @@ onMounted(() => {
   line-height: 1.3;
 }
 
+.course-conflict-pair {
+  display: flex;
+  gap: 2px;
+  min-height: 100%;
+}
+
+.course-block-half {
+  flex: 1;
+  min-width: 0;
+}
+
+.conflict-fold {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #909399 !important;
+  color: white;
+  font-weight: bold;
+  font-size: 12px;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.conflict-fold:hover {
+  opacity: 0.85;
+}
+
+.empty-state {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 300px;
+}
+
 /* 手机端适配 */
 @media screen and (max-width: 768px) {
   .schedule-table th {
@@ -311,6 +415,15 @@ onMounted(() => {
   .course-detail {
     font-size: 8px;
     line-height: 1.2;
+  }
+
+  .course-conflict-pair {
+    gap: 1px;
+  }
+
+  .conflict-fold {
+    font-size: 10px;
+    border-radius: 4px;
   }
 
   .week-selector {
