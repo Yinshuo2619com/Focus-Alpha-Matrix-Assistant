@@ -87,14 +87,21 @@ import { useScheduleStore } from '@/stores/schedule'
 import { useUserStore } from '@/stores/user'
 
 const scheduleStore = useScheduleStore()
+const { semesterList } = storeToRefs(scheduleStore)
+const { fetchSemesterList } = scheduleStore
 const userStore = useUserStore()
 const isLoggedIn = computed(() => !!userStore.token)
 const refreshing = ref(false)
 const shareDialogVisible = ref(false)
 const shareUrl = ref('')
 
-onMounted(() => {
+onMounted(async () => {
   scheduleStore.fetchSchedule()
+  try {
+    await fetchSemesterList()
+  } catch (error) {
+    console.error('获取学期列表失败:', error)
+  }
 })
 
 const goToImport = () => window.open('/schedule-import', '_blank')
@@ -129,7 +136,7 @@ const handleRefresh = async () => {
   refreshing.value = true
   try {
     const msg = await scheduleStore.refreshSchedule()
-    ElMessage.success(msg)
+    ElMessage.success(msg || '课表已更新')
   } catch (err: any) {
     if (err.message?.includes('未登录')) {
       ElMessage.warning('教务系统未登录，请先打开课表导入页面登录')

@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import request from '@/utils/request'
 import type { ScheduleData, CourseEntry } from '@/types/schedule'
 
@@ -22,8 +22,11 @@ export const useScheduleStore = defineStore('schedule', () => {
   const hasSchedule = ref(false)
   const semesterList = ref<SemesterInfo[]>([])
   const currentWeek = ref<number>(PREVIEW_WEEK)
+  const currentSemester = ref<string>('')
+  const allCourses = ref<CourseEntry[]>([])
+  const weekList = ref<number[]>([])
 
-  const startDate = computed(() => scheduleData.value.schedule?.startDate || null)
+  const startDate = ref<string | null>(null)
   const maxWeek = ref<number>(0)
 
   const fetchSchedule = async () => {
@@ -32,6 +35,7 @@ export const useScheduleStore = defineStore('schedule', () => {
       const res: any = await request.get('/schedule/current')
       if (res.code === 200 && res.data.schedule) {
         scheduleData.value = res.data
+        startDate.value = res.data.schedule.startDate || null
         hasSchedule.value = res.data.courses.length > 0
         autoSelectWeek()
       }
@@ -124,13 +128,59 @@ export const useScheduleStore = defineStore('schedule', () => {
     }
   }
 
+  /** 解析所有课程的周次信息，生成去重排序的周次列表 */
+  const generateWeekList = (courses: CourseEntry[]): number[] => {
+    const weeks = new Set<number>()
+    for (const course of courses) {
+      const parts = course.weeks.split(',')
+      for (const part of parts) {
+        if (part.includes('-')) {
+          const [start, end] = part.split('-').map(Number)
+          for (let i = start; i <= end; i++) {
+            weeks.add(i)
+          }
+        } else {
+          weeks.add(Number(part))
+        }
+      }
+    }
+    return [...weeks].sort((a, b) => a - b)
+  }
+
+  const fetchHistoricalSchedule = async (semester: string, semesterId: number) => {
+    loading.value = true
+    try {
+      const res: any = await request.get('/schedule/history', {
+        params: { semester, semesterId }
+      })
+      if (res.code === 200) {
+        const { schedule, courses } = res.data
+        scheduleData.value = { schedule, courses }
+        currentSemester.value = semester
+        startDate.value = schedule.startDate || null
+        allCourses.value = courses
+        weekList.value = generateWeekList(courses)
+        maxWeek.value = weekList.value.length
+        autoSelectWeek()
+      } else {
+        throw new Error(res.message)
+      }
+    } catch (error) {
+      console.error('获取历史课表失败:', error)
+      throw error
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     scheduleData, loading, hasSchedule,
-    semesterList, currentWeek, startDate, maxWeek,
+    semesterList, currentWeek, currentSemester, allCourses, weekList,
+    startDate, maxWeek,
     fetchSchedule, loginToEdu, extractSchedule, saveSchedule,
     deleteSchedule, refreshSchedule, generateShareToken,
     fetchSharedSchedule, importSharedSchedule,
-    fetchSemesterList, autoSelectWeek,
+    fetchSemesterList, autoSelectWeek, fetchHistoricalSchedule,
     PREVIEW_WEEK, END_WEEK
   }
 })
