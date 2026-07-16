@@ -77,6 +77,7 @@
 
 <script setup lang="ts">
 import { onMounted, ref, computed } from 'vue'
+import { storeToRefs } from 'pinia'
 import { Plus, Loading, Refresh, Share } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import StatusBar from '@/components/StatusBar.vue'
