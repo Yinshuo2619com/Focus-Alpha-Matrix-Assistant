@@ -34,6 +34,11 @@ const router = createRouter({
       component: () => import('@/views/Favorites.vue')
     },
     {
+      path: '/my-comments',
+      name: 'MyComments',
+      component: () => import('@/views/MyComments.vue')
+    },
+    {
       path: '/notifications',
       name: 'Notifications',
       component: () => import('@/views/Notifications.vue')

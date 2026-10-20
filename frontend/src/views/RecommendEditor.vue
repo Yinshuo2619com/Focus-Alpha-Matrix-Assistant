@@ -5,7 +5,7 @@
 
     <div class="editor-container">
       <div class="editor-header">
-        <el-button @click="$router.back()">
+        <el-button @click="goBack()">
           <el-icon><ArrowLeft /></el-icon>
           返回
         </el-button>
@@ -143,6 +143,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft, Plus, Upload, Close, Picture, Document, Delete } from '@element-plus/icons-vue'
 import MarkdownIt from 'markdown-it'
 import StatusBar from '@/components/StatusBar.vue'
+import { goBack } from '@/utils/navigation'
 import request from '@/utils/request'
 
 const route = useRoute()
@@ -343,7 +344,7 @@ const loadRecommendation = async (id: string) => {
     }
   } catch (err: any) {
     ElMessage.error(isTool.value ? '加载工具内容失败' : '加载推荐内容失败')
-    router.back()
+    goBack()
   }
 }
 

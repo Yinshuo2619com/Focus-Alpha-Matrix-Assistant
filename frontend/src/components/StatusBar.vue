@@ -42,6 +42,10 @@
                 <el-icon><Star /></el-icon>
                 <span>我的收藏</span>
               </div>
+              <div class="menu-item" @click="goTo('/my-comments')">
+                <el-icon><ChatDotRound /></el-icon>
+                <span>我的评论</span>
+              </div>
               <div v-if="store.isAdmin" class="menu-item" @click="goToUserManagement">
                 <el-icon><User /></el-icon>
                 <span>用户管理</span>
@@ -70,7 +74,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
-import { User, SwitchButton, UserFilled, Operation, HomeFilled, Grid, Star, Bell } from '@element-plus/icons-vue'
+import { User, SwitchButton, UserFilled, Operation, HomeFilled, Grid, Star, Bell, ChatDotRound } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useNotification } from '@/composables/useNotification'
 import ThemeSwitcher from './ThemeSwitcher.vue'

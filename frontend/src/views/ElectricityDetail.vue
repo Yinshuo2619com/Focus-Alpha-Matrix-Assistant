@@ -5,7 +5,7 @@
 
     <div class="detail-container">
       <div class="detail-header">
-        <el-button class="back-btn" @click="$router.back()">
+        <el-button class="back-btn" @click="goBack()">
           <el-icon><ArrowLeft /></el-icon>
           返回
         </el-button>
@@ -144,6 +144,7 @@ import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { ArrowLeft, Loading } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import StatusBar from '@/components/StatusBar.vue'
+import { goBack } from '@/utils/navigation'
 import { useUserStore } from '@/stores/user'
 import request from '@/utils/request'
 import echarts from '@/utils/echarts'

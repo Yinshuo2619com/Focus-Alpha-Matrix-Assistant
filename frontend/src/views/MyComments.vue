@@ -5,7 +5,7 @@
 
     <div class="comments-container">
       <div class="comments-header">
-        <el-button @click="$router.back()">
+        <el-button @click="goBack()">
           <el-icon><ArrowLeft /></el-icon>
           返回
         </el-button>
@@ -54,6 +54,7 @@ import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft, Loading, Star, Delete, Document } from '@element-plus/icons-vue'
 import StatusBar from '@/components/StatusBar.vue'
+import { goBack } from '@/utils/navigation'
 import request from '@/utils/request'
 
 interface MyComment {

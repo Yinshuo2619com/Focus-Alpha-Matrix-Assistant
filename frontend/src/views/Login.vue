@@ -67,7 +67,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { useUserStore } from '@/stores/user'
@@ -133,6 +133,16 @@ const handleLogin = async () => {
 const goToRegister = () => {
   router.push('/register')
 }
+
+// 已登录用户不应停留在登录页：浏览器后退、书签、直接输入地址等都可能落到这里。
+// 判断口径与路由守卫保持一致（守卫也只看 localStorage 里的 token）。
+// 用 replace 而非 push，避免再往历史栈里塞一条登录页记录。
+onMounted(() => {
+  if (!localStorage.getItem('token')) return
+
+  const redirect = route.query.redirect as string
+  router.replace(redirect && redirect !== '/login' ? redirect : '/home')
+})
 
 const handleForgotPassword = () => {
   ElMessageBox.alert(

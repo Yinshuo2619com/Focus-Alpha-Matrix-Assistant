@@ -11,7 +11,7 @@
       />
 
       <div class="profile-container">
-        <el-button class="back-btn" @click="router.back()">
+        <el-button class="back-btn" @click="goBack()">
           <el-icon><ArrowLeft /></el-icon>
           返回
         </el-button>
@@ -231,6 +231,7 @@ import { Camera, ArrowLeft } from '@element-plus/icons-vue'
 import StatusBar from '@/components/StatusBar.vue'
 import EyeCharacter from '@/components/EyeCharacter.vue'
 import router from '@/router'
+import { goBack } from '@/utils/navigation'
 import request from '@/utils/request'
 
 const userStore = useUserStore()

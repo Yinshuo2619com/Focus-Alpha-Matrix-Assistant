@@ -5,7 +5,7 @@
 
     <div class="customize-header">
       <div class="header-left">
-        <el-icon class="back-btn" @click="$router.back()"><ArrowLeft /></el-icon>
+        <el-icon class="back-btn" @click="goBack()"><ArrowLeft /></el-icon>
         <h2>主题自定义</h2>
       </div>
       <div class="header-actions">
@@ -63,6 +63,7 @@ import { ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft, Brush, Picture, Monitor, Grid } from '@element-plus/icons-vue'
 import StatusBar from '@/components/StatusBar.vue'
+import { goBack } from '@/utils/navigation'
 import { useThemeStore } from '@/stores/theme'
 import ThemePanel from '@/components/customize/ThemePanel.vue'
 import LogoPanel from '@/components/customize/LogoPanel.vue'
