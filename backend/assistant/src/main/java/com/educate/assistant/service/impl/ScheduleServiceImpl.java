@@ -46,6 +46,31 @@ public class ScheduleServiceImpl implements ScheduleService {
         return result;
     }
 
+    @Override
+    public Map<String, Object> getScheduleBySemester(Long userId, String semester) {
+        List<Map<String, Object>> schedules = jdbcTemplate.queryForList(
+            "SELECT * FROM schedule WHERE user_id = ? AND semester = ? ORDER BY updated_at DESC LIMIT 1",
+            userId, semester);
+
+        Map<String, Object> result = new HashMap<>();
+        if (schedules.isEmpty()) {
+            result.put("schedule", null);
+            result.put("courses", List.of());
+            return result;
+        }
+
+        Map<String, Object> schedule = toCamelCase(schedules.get(0));
+        Long scheduleId = ((Number) schedules.get(0).get("id")).longValue();
+
+        List<Map<String, Object>> courses = jdbcTemplate.queryForList(
+            "SELECT * FROM course_entry WHERE schedule_id = ? ORDER BY day_of_week, start_section",
+            scheduleId).stream().map(this::toCamelCase).toList();
+
+        result.put("schedule", schedule);
+        result.put("courses", courses);
+        return result;
+    }
+
     private Map<String, Object> toCamelCase(Map<String, Object> row) {
         Map<String, Object> result = new HashMap<>();
         for (Map.Entry<String, Object> entry : row.entrySet()) {

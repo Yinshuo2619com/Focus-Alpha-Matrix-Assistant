@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import request from '@/utils/request'
 import type { ScheduleData, CourseEntry } from '@/types/schedule'
 
@@ -27,7 +27,7 @@ export const useScheduleStore = defineStore('schedule', () => {
   const weekList = ref<number[]>([])
 
   const startDate = ref<string | null>(null)
-  const maxWeek = ref<number>(0)
+  const maxWeek = computed(() => weekList.value.length)
 
   const fetchSchedule = async () => {
     loading.value = true
@@ -37,6 +37,8 @@ export const useScheduleStore = defineStore('schedule', () => {
         scheduleData.value = res.data
         startDate.value = res.data.schedule.startDate || null
         hasSchedule.value = res.data.courses.length > 0
+        // 计算周次列表
+        weekList.value = generateWeekList(res.data.courses)
         autoSelectWeek()
       }
     } catch {
@@ -106,15 +108,16 @@ export const useScheduleStore = defineStore('schedule', () => {
   }
 
   const autoSelectWeek = () => {
-    if (!startDate.value || !maxWeek.value) {
+    if (!startDate.value || weekList.value.length === 0) {
       currentWeek.value = PREVIEW_WEEK
       return
     }
 
     const today = new Date()
     const start = new Date(startDate.value)
+    const lastWeek = weekList.value[weekList.value.length - 1]
     const end = new Date(start)
-    end.setDate(end.getDate() + maxWeek.value * 7)
+    end.setDate(end.getDate() + lastWeek * 7)
 
     if (today < start) {
       currentWeek.value = PREVIEW_WEEK
@@ -124,7 +127,11 @@ export const useScheduleStore = defineStore('schedule', () => {
       // 计算当前周数
       const diffTime = today.getTime() - start.getTime()
       const diffWeeks = Math.floor(diffTime / (7 * 24 * 60 * 60 * 1000)) + 1
-      currentWeek.value = Math.min(diffWeeks, maxWeek.value)
+      // 选择最接近的可用周次
+      const closest = weekList.value.reduce((prev, curr) =>
+        Math.abs(curr - diffWeeks) < Math.abs(prev - diffWeeks) ? curr : prev
+      )
+      currentWeek.value = closest
     }
   }
 
@@ -160,7 +167,6 @@ export const useScheduleStore = defineStore('schedule', () => {
         startDate.value = schedule.startDate || null
         allCourses.value = courses
         weekList.value = generateWeekList(courses)
-        maxWeek.value = weekList.value.length
         autoSelectWeek()
       } else {
         throw new Error(res.message)

@@ -34,6 +34,7 @@
                   <div class="course-name">{{ getCourse(day.value, section)?.courseName }}</div>
                   <div class="course-detail">{{ getCourse(day.value, section)?.teacher }}</div>
                   <div class="course-detail">{{ getCourse(day.value, section)?.location }}</div>
+                  <div v-if="currentWeek === PREVIEW_WEEK" class="course-weeks">{{ getCourse(day.value, section)?.weeks }}</div>
                 </div>
 
                 <!-- 两门冲突课程：并排显示 -->
@@ -50,6 +51,7 @@
                     <div class="course-name">{{ course.courseName }}</div>
                     <div class="course-detail">{{ course.teacher }}</div>
                     <div class="course-detail">{{ course.location }}</div>
+                    <div v-if="currentWeek === PREVIEW_WEEK" class="course-weeks">{{ course.weeks }}</div>
                   </div>
                 </div>
 
@@ -346,6 +348,13 @@ onMounted(() => {
   font-size: 10px;
   opacity: 0.9;
   line-height: 1.3;
+}
+
+.course-weeks {
+  font-size: 9px;
+  opacity: 0.8;
+  line-height: 1.3;
+  margin-top: 2px;
 }
 
 .course-conflict-pair {

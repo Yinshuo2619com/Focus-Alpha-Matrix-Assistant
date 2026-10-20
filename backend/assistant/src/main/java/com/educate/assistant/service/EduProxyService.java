@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
 public class EduProxyService {
 
     private static final String SESSION_KEY_PREFIX = "edu:session:";
-    private static final long SESSION_TTL_HOURS = 1;
+    private static final long SESSION_TTL_MINUTES = 10;
 
     private final RestTemplate restTemplate;
     private final JdbcTemplate jdbcTemplate;
@@ -82,7 +82,7 @@ public class EduProxyService {
     private void saveSessionCookies(Long userId, Map<String, String> cookies) {
         try {
             String json = objectMapper.writeValueAsString(cookies);
-            redisTemplate.opsForValue().set(SESSION_KEY_PREFIX + userId, json, SESSION_TTL_HOURS, TimeUnit.HOURS);
+            redisTemplate.opsForValue().set(SESSION_KEY_PREFIX + userId, json, SESSION_TTL_MINUTES, TimeUnit.MINUTES);
         } catch (Exception ignored) {}
     }
 

@@ -91,24 +91,12 @@ public class ScheduleController {
         Long userId = getCurrentUserId();
 
         // 先查本地数据库
-        List<Map<String, Object>> schedules = jdbcTemplate.queryForList(
-            "SELECT * FROM schedule WHERE user_id = ? AND semester = ?",
-            userId, semester);
-
-        if (!schedules.isEmpty()) {
-            Map<String, Object> schedule = schedules.get(0);
-            Long scheduleId = ((Number) schedule.get("id")).longValue();
-            List<Map<String, Object>> courses = jdbcTemplate.queryForList(
-                "SELECT * FROM course_entry WHERE schedule_id = ? ORDER BY day_of_week, start_section",
-                scheduleId);
-
-            Map<String, Object> result = new HashMap<>();
-            result.put("schedule", schedule);
-            result.put("courses", courses);
-            return Result.success(result);
+        Map<String, Object> local = scheduleService.getScheduleBySemester(userId, semester);
+        if (local.get("schedule") != null) {
+            return Result.success(local);
         }
 
-        // 本地没有，从教务系统获取
+        // 本地没有，从教务系统实时获取（只读，不落库）
         Map<String, String> cookies = eduProxyService.getSessionCookies(userId);
         if (cookies.isEmpty()) {
             return Result.error(400, "未登录教务系统，请先登录");
@@ -306,26 +294,18 @@ public class ScheduleController {
             // 优先使用教务系统学期配置的 startDate
             String finalStartDate = (eduStartDate != null && !eduStartDate.isEmpty()) ? eduStartDate : startDate;
 
-            // 保存到数据库
-            SaveScheduleRequest request = new SaveScheduleRequest();
-            request.setSemester(semester);
-            request.setCourses(courses);
-            request.setStartDate(finalStartDate);
-            scheduleService.saveSchedule(userId, request);
-
-            // 查询刚保存的数据返回
-            List<Map<String, Object>> savedSchedules = jdbcTemplate.queryForList(
-                "SELECT * FROM schedule WHERE user_id = ? AND semester = ?",
-                userId, semester);
-            Map<String, Object> schedule = savedSchedules.get(0);
-            Long scheduleId = ((Number) schedule.get("id")).longValue();
-            List<Map<String, Object>> savedCourses = jdbcTemplate.queryForList(
-                "SELECT * FROM course_entry WHERE schedule_id = ? ORDER BY day_of_week, start_section",
-                scheduleId);
+            // 只读返回，不写入数据库（往期课表仅供查看）
+            int lastDash = semester.lastIndexOf('-');
+            Map<String, Object> schedule = new HashMap<>();
+            schedule.put("semester", semester);
+            schedule.put("academicYear", lastDash > 0 ? semester.substring(0, lastDash) : semester);
+            schedule.put("startDate", finalStartDate);
 
             Map<String, Object> resp = new HashMap<>();
             resp.put("schedule", schedule);
-            resp.put("courses", savedCourses);
+            resp.put("courses", courses.stream()
+                .map(c -> mapper.convertValue(c, new TypeReference<Map<String, Object>>() {}))
+                .collect(Collectors.toList()));
             return Result.success(resp);
         } catch (Exception e) {
             return Result.error(500, "获取历史课表失败: " + e.getMessage());
@@ -704,42 +684,6 @@ public class ScheduleController {
             System.out.println("[Schedule] Refresh failed: " + e.getMessage());
             e.printStackTrace();
             return Result.error(500, "刷新失败: " + e.getMessage());
-        }
-    }
-
-    /**
-     * 测试接口：查询教务系统指定学期的课表数据（用于验证是否支持历史学期查询）
-     */
-    @GetMapping("/test-historical")
-    public Result<Map<String, Object>> testHistoricalSchedule(@RequestParam int semesterId) {
-        Long userId = getCurrentUserId();
-
-        Map<String, String> cookies = eduProxyService.getSessionCookies(userId);
-        if (cookies.isEmpty()) {
-            return Result.error(400, "未登录教务系统，请先登录");
-        }
-
-        try {
-            String jsonData = eduProxyService.fetchScheduleDataApi(userId, "default", semesterId);
-            ObjectMapper mapper = new ObjectMapper();
-            Map<String, Object> data = mapper.readValue(jsonData, new TypeReference<Map<String, Object>>() {});
-
-            // 提取课程数量
-            int lessonCount = 0;
-            Object lessonsObj = data.get("lessons");
-            if (lessonsObj instanceof List) {
-                lessonCount = ((List<?>) lessonsObj).size();
-            }
-
-            Map<String, Object> result = new HashMap<>();
-            result.put("semesterId", semesterId);
-            result.put("lessonCount", lessonCount);
-            result.put("success", lessonCount > 0);
-            result.put("rawData", data);
-
-            return Result.success(result);
-        } catch (Exception e) {
-            return Result.error(500, "查询失败: " + e.getMessage());
         }
     }
 

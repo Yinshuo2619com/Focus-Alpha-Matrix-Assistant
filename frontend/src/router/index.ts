@@ -50,6 +50,11 @@ const router = createRouter({
       component: () => import('@/views/ScheduleImport.vue')
     },
     {
+      path: '/historical-schedule',
+      name: 'HistoricalSchedule',
+      component: () => import('@/views/HistoricalSchedule.vue')
+    },
+    {
       path: '/schedule/share/:token',
       name: 'ShareSchedule',
       component: () => import('@/views/ShareSchedule.vue'),

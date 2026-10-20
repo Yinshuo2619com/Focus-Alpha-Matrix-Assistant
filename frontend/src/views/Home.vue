@@ -13,6 +13,10 @@
                 <el-icon><Share /></el-icon>
                 分享课表
               </el-button>
+              <el-button v-if="scheduleStore.hasSchedule" size="small" @click="openHistorical">
+                <el-icon><Calendar /></el-icon>
+                往期课表
+              </el-button>
               <el-button v-if="scheduleStore.hasSchedule" size="small" @click="handleRefresh" :loading="refreshing">
                 <el-icon><Refresh /></el-icon>
                 刷新课表
@@ -77,8 +81,7 @@
 
 <script setup lang="ts">
 import { onMounted, ref, computed } from 'vue'
-import { storeToRefs } from 'pinia'
-import { Plus, Loading, Refresh, Share } from '@element-plus/icons-vue'
+import { Plus, Loading, Refresh, Share, Calendar } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import StatusBar from '@/components/StatusBar.vue'
 import ScheduleGrid from '@/components/ScheduleGrid.vue'
@@ -88,24 +91,18 @@ import { useScheduleStore } from '@/stores/schedule'
 import { useUserStore } from '@/stores/user'
 
 const scheduleStore = useScheduleStore()
-const { semesterList } = storeToRefs(scheduleStore)
-const { fetchSemesterList } = scheduleStore
 const userStore = useUserStore()
 const isLoggedIn = computed(() => !!userStore.token)
 const refreshing = ref(false)
 const shareDialogVisible = ref(false)
 const shareUrl = ref('')
 
-onMounted(async () => {
+onMounted(() => {
   scheduleStore.fetchSchedule()
-  try {
-    await fetchSemesterList()
-  } catch (error) {
-    console.error('获取学期列表失败:', error)
-  }
 })
 
 const goToImport = () => window.open('/schedule-import', '_blank')
+const openHistorical = () => window.open('/historical-schedule', '_blank')
 
 const handleShare = async () => {
   try {
